@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BGS Workforce Management · Prototipe UI</title>
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="assets/data.js"></script>
+  <script src="assets/core.js"></script>
+  <script src="assets/nav.js"></script>
+  <!-- page modules: each registers its routes via BGS.router.add(); a missing file never breaks the app -->
+  <script src="assets/pages/dashboard.js"></script>
+  <script src="assets/pages/workers.js"></script>
+  <script src="assets/pages/recruitment.js"></script>
+  <script src="assets/pages/placement.js"></script>
+  <script src="assets/pages/domain.js"></script>
+  <script src="assets/pages/processing.js"></script>
+  <script src="assets/pages/operations.js"></script>
+  <script src="assets/pages/workflow.js"></script>
+  <script src="assets/pages/admin.js"></script>
+  <script>BGS.boot();</script>
+</body>
+</html>

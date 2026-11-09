@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ghostex-page" content="v2">
+<title>PRD BGS App: workflow utama CPMI</title>
+<style>
+  .fc { display:block; }
+  .fc text { font-family: var(--font-sans); }
+  .fc .n { fill: var(--gx-surface); stroke-width: 1.6; }
+  .fc .dm { stroke: var(--gx-warn); }
+  .fc .t { font-size: 13px; font-weight: 600; fill: var(--gx-fg); }
+  .fc .mid { text-anchor: middle; }
+  .fc .s { font-size: 11px; fill: var(--gx-muted); }
+  .fc .dep { font-style: italic; font-size: 10.5px; }
+  .fc .tag { font-size: 10px; font-weight: 700; letter-spacing: .06em; }
+  .fc .ln { stroke: var(--gx-muted); stroke-width: 1.5; fill: none; }
+  .fc .dash { stroke-dasharray: 5 4; }
+  .fc .ah { fill: var(--gx-muted); }
+  .fc .lbl { font-size: 11px; font-weight: 600; fill: var(--gx-muted); }
+  .fc .rail { stroke: var(--gx-line-strong); stroke-width: 2; }
+  .fc .bar { stroke: var(--gx-fg); stroke-width: 3; opacity: .55; }
+  .fc .phase { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-anchor: middle; fill: var(--gx-muted); }
+  .fc .phase2 { font-size: 11px; font-weight: 700; letter-spacing: .08em; fill: var(--gx-muted); }
+  .fc .bd { fill: var(--gx-raised); stroke: var(--gx-line-strong); stroke-width: 1; }
+  .fc .bdt { font-size: 10px; font-weight: 700; fill: var(--gx-fg); text-anchor: middle; }
+  .fc .legend { fill: none; stroke: var(--gx-line-strong); stroke-dasharray: 3 3; }
+  .fc .sw { fill: var(--gx-surface); stroke-width: 2; }
+  .fc .o-cpmi { stroke: var(--chart-1); } .fc .tg-cpmi { fill: var(--chart-1); }
+  .fc .o-admin { stroke: var(--chart-2); } .fc .tg-admin { fill: var(--chart-2); }
+  .fc .o-pic { stroke: var(--chart-3); } .fc .tg-pic { fill: var(--chart-3); }
+  .fc .o-sys { stroke: var(--chart-4); stroke-dasharray: 4 3; } .fc .tg-sys { fill: var(--chart-4); }
+  .fc .o-sys.sw { stroke-dasharray: none; }
+  gx-wide, .gx-figure { min-width: 0; max-width: 100%; }
+  td code, th code { white-space: nowrap; }
+  .nw { white-space: nowrap; }
+  .tbl { overflow-x: auto; }
+  .tbl table { min-width: 560px; }
+</style>
+</head>
+<body>
+<gx-page>
+  <header>
+    <span class="gx-eyebrow">PRD · BGS App · v0.2 draf</span>
+    <h1>PRD BGS App: workflow utama CPMI</h1>
+    <p class="gx-lede">Dari Form CV sampai berangkat dan dipantau: siapa mengerjakan apa (CPMI, PIC, Admin), bagaimana kuota dikunci, dan apa yang harus terlihat di dashboard.</p>
+    <div class="gx-chips">
+      <span class="gx-chip"><b>4</b> role</span>
+      <span class="gx-chip"><b>5</b> fase</span>
+      <span class="gx-chip"><b>9 + 4</b> langkah processing</span>
+      <span class="gx-chip">Dasar aturan: Permen KP2MI 2/2026</span>
+    </div>
+  </header>
+
+  <h2>1. Ringkasan</h2>
+  <div class="gx-callout">
+    <b>Masalah.</b> BGS mengirim banyak CPMI ke banyak negara. Tiap negara punya syarat sendiri, dan langkahnya dikerjakan dua pihak: PIC dan calon worker. Tanpa satu sistem, sulit tahu <b>siapa memegang worker mana</b>, langkah mana yang macet, berapa sisa kuota, dan laporan apa yang wajib dikirim ke KP2MI. <i>(Asumsi dari interview; proses saat ini belum dikonfirmasi.)</i>
+  </div>
+
+  <h3>Tujuan</h3>
+  <ul>
+    <li>Satu alur baku <b>Form CV → Screening → Processing → Berangkat</b>, bisa diatur per negara dan profesi.</li>
+    <li>Setiap worker punya <b>satu PIC</b>, dan setiap langkah punya pemilik yang jelas (PIC atau CPMI).</li>
+    <li>Kuota per kode negara-profesi <b>tidak bisa terlewati</b>.</li>
+    <li>Dashboard menunjukkan kondisi keseluruhan dan kewajiban lapor ke regulator.</li>
+  </ul>
+  <p><b>Di luar cakupan:</b> biaya dan pembayaran, payroll, integrasi API Sisko P2MI, tanda tangan elektronik, aplikasi native. Semuanya perlu keputusan terpisah.</p>
+
+  <h3>Ukuran berhasil</h3>
+  <div class="tbl"><table><thead><tr><th>Ukuran</th><th>Target</th></tr></thead><tbody><tr><td>Worker aktif tanpa PIC</td><td>0</td></tr><tr><td>Penerimaan melebihi kuota</td><td>0</td></tr><tr><td>Keberangkatan yang sudah dilaporkan ke KP2MI</td><td>100%</td></tr><tr><td>Waktu median Form CV sampai berangkat</td><td>Diukur 1 bulan pertama, target ditetapkan setelahnya</td></tr><tr><td>Langkah yang lewat batas waktu</td><td>Usulan &lt; 10%; batas waktu tiap langkah ditentukan owner</td></tr></tbody></table></div>
+
+  <h2>2. Siapa boleh apa</h2>
+  <p>CPMI memakai portal sendiri di HP. Role internal ada tiga: Superadmin, Admin, PIC.</p>
+  <div class="tbl"><table><thead><tr><th>Kemampuan</th><th>Superadmin</th><th>Admin</th><th>PIC</th><th>CPMI</th></tr></thead><tbody><tr><td>Kelola user dan role</td><td>✓</td><td>–</td><td>–</td><td>–</td></tr><tr><td>Kode unik dan kuota</td><td>✓ aktifkan, ubah</td><td>buat draf</td><td>lihat</td><td>–</td></tr><tr><td>Template langkah per negara</td><td>✓</td><td>✓</td><td>–</td><td>–</td></tr><tr><td>Lihat data worker</td><td>semua</td><td>semua</td><td>miliknya</td><td>dirinya</td></tr><tr><td>Verifikasi dokumen, nilai skill</td><td>✓</td><td>✓</td><td>worker miliknya</td><td>–</td></tr><tr><td>Putuskan lulus / tolak</td><td>✓</td><td>✓</td><td>usul</td><td>–</td></tr><tr><td>Tetapkan / ganti PIC</td><td>✓</td><td>✓</td><td>–</td><td>–</td></tr><tr><td>Kerjakan langkah processing</td><td>✓</td><td>✓</td><td>bagian PIC</td><td>bagian CPMI</td></tr><tr><td>Override gate / kuota (wajib alasan)</td><td>✓</td><td>–</td><td>–</td><td>–</td></tr><tr><td>Dashboard dan laporan</td><td>penuh</td><td>penuh</td><td>beban sendiri</td><td>status sendiri</td></tr><tr><td>Audit log</td><td>✓</td><td>lihat</td><td>–</td><td>–</td></tr></tbody></table></div>
+
+  <h2>3. Alur utama</h2>
+  <p>Lima fase berurutan. Kotak di bawah fase adalah jalur samping; garis putus-putus berarti kembali ke fase. Warna menunjukkan pemilik utama.</p>
+  <figure class="gx-figure">
+    <div style="overflow-x:auto;max-width:100%"><svg class="fc" viewBox="0 0 770 285" width="720" height="267" role="img" aria-label="Alur utama CPMI dari form CV sampai pasca-berangkat"><defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs><text class="phase" x="75" y="22">1 FORM CV</text><g><rect class="n o-cpmi" x="10" y="32" width="130" height="98" rx="10"/><text class="tag tg-cpmi" x="20" y="50">CPMI</text><text class="t" x="20" y="70">Isi Form CV</text><text class="s" x="20" y="90">negara, profesi,</text><text class="s" x="20" y="105">dokumen awal</text></g><text class="phase" x="230" y="22">2 SCREENING</text><g><rect class="n o-pic" x="165" y="32" width="130" height="98" rx="10"/><text class="tag tg-pic" x="175" y="50">PIC · ADMIN</text><text class="t" x="175" y="70">Screening</text><text class="s" x="175" y="90">cek dokumen,</text><text class="s" x="175" y="105">tes skill</text></g><text class="phase" x="385" y="22">3 PROCESSING</text><g><rect class="n o-pic" x="320" y="32" width="130" height="98" rx="10"/><text class="tag tg-pic" x="330" y="50">PIC · CPMI</text><text class="t" x="330" y="70">Processing</text><text class="s" x="330" y="90">A: dokumen</text><text class="s" x="330" y="105">B: OPP, E-KPMI</text></g><text class="phase" x="540" y="22">4 OUTPUT</text><g><rect class="n o-admin" x="475" y="32" width="130" height="98" rx="10"/><text class="tag tg-admin" x="485" y="50">ADMIN · PIC</text><text class="t" x="485" y="70">Berangkat</text><text class="s" x="485" y="90">tiket, jadwal,</text><text class="s" x="485" y="105">lapor ke KP2MI</text></g><text class="phase" x="695" y="22">5 PASCA</text><g><rect class="n o-pic" x="630" y="32" width="130" height="98" rx="10"/><text class="tag tg-pic" x="640" y="50">PIC</text><text class="t" x="640" y="70">Pasca-berangkat</text><text class="s" x="640" y="90">pantau, lalu</text><text class="s" x="640" y="105">pulang / perpanjang</text></g><path class="ln" d="M140,81 L165,81" marker-end="url(#ah1)"/><path class="ln" d="M295,81 L320,81" marker-end="url(#ah1)"/><path class="ln" d="M450,81 L475,81" marker-end="url(#ah1)"/><path class="ln" d="M605,81 L630,81" marker-end="url(#ah1)"/><g><rect class="n o-sys" x="5" y="190" width="140" height="78" rx="10"/><text class="tag tg-sys" x="15" y="206">SISTEM</text><text class="t" x="15" y="224">Waiting list</text><text class="s" x="15" y="241">kuota penuh,</text><text class="s" x="15" y="256">antre (FIFO)</text></g><path class="ln" d="M45,130 L45,190" marker-end="url(#ah1)"/><text class="lbl" x="51" y="165">Penuh</text><path class="ln dash" d="M105,190 L105,130" marker-end="url(#ah1)"/><text class="lbl" x="111" y="165">Kuota buka</text><g><rect class="n o-pic" x="160" y="190" width="140" height="78" rx="10"/><text class="tag tg-pic" x="170" y="206">PIC · ADMIN</text><text class="t" x="170" y="224">Revisi / Tolak</text><text class="s" x="170" y="241">kurang dokumen: revisi</text><text class="s" x="170" y="256">gagal: Talent Pool</text></g><path class="ln" d="M200,130 L200,190" marker-end="url(#ah1)"/><text class="lbl" x="206" y="165">Gagal</text><path class="ln dash" d="M260,190 L260,130" marker-end="url(#ah1)"/><text class="lbl" x="266" y="165">Revisi</text><g><rect class="n o-sys" x="315" y="190" width="140" height="78" rx="10"/><text class="tag tg-sys" x="325" y="206">SISTEM</text><text class="t" x="325" y="224">Pengingat</text><text class="s" x="325" y="241">eskalasi ke PIC bila</text><text class="s" x="325" y="256">langkah wajib macet</text></g><path class="ln" d="M355,130 L355,190" marker-end="url(#ah1)"/><text class="lbl" x="361" y="165">Macet</text><path class="ln dash" d="M415,190 L415,130" marker-end="url(#ah1)"/><text class="lbl" x="421" y="165">Dikerjakan</text></svg></div>
+    <figcaption>Diagram 1. Alur utama. Biru CPMI, oranye Admin, hijau PIC, garis putus-putus Sistem (otomatis).</figcaption>
+  </figure>
+  <div class="gx-callout" data-tone="warn">
+    <b>Urutan resmi berbeda dari interview.</b> Permen KP2MI 2/2026 Pasal 27: daftar (akun Sisko, pilih P3MI, jabatan, unggah dokumen) → seleksi → pemenuhan dokumen → OPP → berangkat. Di interview, "daftar Sisko" ada <i>setelah</i> screening. Usulan: screening BGS dianggap <b>pra-seleksi internal</b>, dan urutan langkah diatur lewat template yang bisa diubah Admin. Perlu konfirmasi owner / Disnaker.
+  </div>
+
+  <h2>4. Status dan syarat lanjut</h2>
+  <div class="tbl"><table><thead><tr><th>Fase</th><th>Status</th><th>Pemilik</th><th>Syarat lanjut</th></tr></thead><tbody><tr><td class="nw">1 Form CV</td><td><code>DRAFT</code> → <code>SUBMITTED</code></td><td>CPMI (Admin boleh input)</td><td>Data wajib dan dokumen awal lengkap, NIK tidak ganda, kode negara-profesi dipilih</td></tr><tr><td class="nw">2 Screening</td><td><code>DOKUMEN_REVIEW</code> → <code>SKILL_TEST</code> → <code>LULUS</code> / <code>REVISI</code> / <code>DITOLAK</code> / <code>WAITING_LIST</code></td><td>PIC verifikasi, Admin putuskan</td><td>Dokumen valid, skor skill cukup, PIC ditetapkan, kuota di-reserve</td></tr><tr><td class="nw">3 Processing A</td><td><code>DOKUMEN_PROSES</code></td><td>PIC + CPMI</td><td>Gate A: semua langkah wajib selesai dan bukti terverifikasi</td></tr><tr><td class="nw">3 Processing B</td><td><code>PRA_BERANGKAT</code> (OPP → biometrik → E-KPMI)</td><td>PIC + CPMI</td><td>E-KPMI sudah terbit</td></tr><tr><td class="nw">4 Output</td><td><code>SIAP_BERANGKAT</code> → <code>BERANGKAT</code></td><td>PIC, Admin</td><td>Tanggal, tiket, pemberi kerja terisi; laporan keberangkatan dibuat</td></tr><tr><td class="nw">5 Pasca</td><td><code>BEKERJA</code> → <code>PULANG</code> / <code>PERPANJANG</code> → <code>SELESAI</code></td><td>PIC</td><td>Pemantauan minimal 1x tercatat; kepulangan / perpanjangan dilaporkan</td></tr><tr><td class="nw">Kapan saja</td><td><code>MUNDUR</code> / <code>DITUNDA</code></td><td>Admin</td><td>Alasan wajib; kuota dilepas otomatis</td></tr></tbody></table></div>
+</gx-page>
+
+<gx-page>
+  <h2>5. Processing: langkah dan pemilik</h2>
+  <p>Sebagian langkah dikerjakan PIC, sebagian CPMI. Tiap langkah di template punya <b>pelaksana</b>, <b>syarat</b>, status wajib / opsional, dan <b>bukti</b> (file atau nomor) yang diverifikasi PIC.</p>
+  <figure class="gx-figure">
+    <div style="overflow-x:auto;max-width:100%"><svg class="fc" viewBox="0 0 770 930" width="720" height="870" role="img" aria-label="Flowchart detail tahap processing"><defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs><text class="phase2" x="20" y="20">FASE A · PEMENUHAN DOKUMEN (PARALEL, SESUAI TEMPLATE NEGARA)</text><line class="bar" x1="10" y1="36" x2="760" y2="36"/><g><rect class="n o-admin" x="20" y="56" width="350" height="80" rx="10"/><circle class="bd" cx="42" cy="80" r="12"/><text class="bdt" x="42" y="84">1</text><text class="tag tg-admin" x="64" y="72">ADMIN · CPMI</text><text class="t" x="64" y="90">Perjanjian Penempatan</text><text class="s" x="64" y="108">Admin siapkan di Sisko; Direktur &amp; CPMI TTD</text><text class="s dep" x="64" y="124">Syarat: lulus screening, kuota ter-reserve</text></g><g><rect class="n o-cpmi" x="400" y="56" width="350" height="80" rx="10"/><circle class="bd" cx="422" cy="80" r="12"/><text class="bdt" x="422" y="84">2</text><text class="tag tg-cpmi" x="444" y="72">CPMI · PIC</text><text class="t" x="444" y="90">Daftar akun Sisko P2MI</text><text class="s" x="444" y="108">CPMI buat akun &amp; unggah dokumen; PIC bantu</text><text class="s dep" x="444" y="124">Syarat: dokumen screening valid</text></g><g><rect class="n o-cpmi" x="20" y="156" width="350" height="80" rx="10"/><circle class="bd" cx="42" cy="180" r="12"/><text class="bdt" x="42" y="184">3</text><text class="tag tg-cpmi" x="64" y="172">CPMI · PIC</text><text class="t" x="64" y="190">Medical check-up + psikologi</text><text class="s" x="64" y="208">CPMI hadir di klinik; PIC jadwalkan &amp; unggah</text><text class="s dep" x="64" y="224">Syarat: jadwal klinik; hasil = surat keterangan</text></g><g><rect class="n o-cpmi" x="400" y="156" width="350" height="80" rx="10"/><circle class="bd" cx="422" cy="180" r="12"/><text class="bdt" x="422" y="184">4</text><text class="tag tg-cpmi" x="444" y="172">CPMI · PIC</text><text class="t" x="444" y="190">Paspor RI</text><text class="s" x="444" y="208">CPMI urus ke imigrasi; PIC mendampingi</text><text class="s dep" x="444" y="224">Syarat: KTP, KK valid</text></g><g><rect class="n o-pic" x="20" y="256" width="350" height="80" rx="10"/><circle class="bd" cx="42" cy="280" r="12"/><text class="bdt" x="42" y="284">5</text><text class="tag tg-pic" x="64" y="272">PIC</text><text class="t" x="64" y="290">BPJS Ketenagakerjaan</text><text class="s" x="64" y="308">PIC daftarkan &amp; bayar iuran</text><text class="s dep" x="64" y="324">Syarat: setelah (1) TTD Perjanjian Penempatan</text></g><g><rect class="n o-pic" x="400" y="256" width="350" height="80" rx="10"/><circle class="bd" cx="422" cy="280" r="12"/><text class="bdt" x="422" y="284">6</text><text class="tag tg-pic" x="444" y="272">PIC</text><text class="t" x="444" y="290">Apostil / legalisir dokumen</text><text class="s" x="444" y="308">PIC kirim ke instansi, lacak resi</text><text class="s dep" x="444" y="324">Syarat: jika diminta negara tujuan</text></g><g><rect class="n o-cpmi" x="20" y="356" width="350" height="80" rx="10"/><circle class="bd" cx="42" cy="380" r="12"/><text class="bdt" x="42" y="384">7</text><text class="tag tg-cpmi" x="64" y="372">CPMI · PIC</text><text class="t" x="64" y="390">Prometrik / uji kompetensi</text><text class="s" x="64" y="408">PIC jadwalkan; CPMI ikut ujian</text><text class="s dep" x="64" y="424">Syarat: jika diminta negara &amp; profesi</text></g><g><rect class="n o-pic" x="400" y="356" width="350" height="80" rx="10"/><circle class="bd" cx="422" cy="380" r="12"/><text class="bdt" x="422" y="384">8</text><text class="tag tg-pic" x="444" y="372">PIC</text><text class="t" x="444" y="390">Persiapan Visa kerja</text><text class="s" x="444" y="408">PIC proses; Saudi lewat Enjaz &amp; Basma</text><text class="s dep" x="444" y="424">Syarat: (3) medical dan (4) paspor selesai</text></g><g><rect class="n o-pic" x="20" y="456" width="350" height="80" rx="10"/><circle class="bd" cx="42" cy="480" r="12"/><text class="bdt" x="42" y="484">9</text><text class="tag tg-pic" x="64" y="472">PIC · CPMI</text><text class="t" x="64" y="490">Perjanjian Kerja</text><text class="s" x="64" y="508">Pemberi kerja &amp; CPMI TTD; PIC fasilitasi</text><text class="s dep" x="64" y="524">Syarat: demand letter / job order aktif</text></g><g><rect class="legend" x="400" y="456" width="350" height="80" rx="10"/><text class="tag" x="414" y="474" fill="var(--gx-muted)">PEMILIK LANGKAH</text><rect class="o-cpmi sw" x="414" y="486" width="14" height="14" rx="3"/><text class="s" x="434" y="498">CPMI</text><rect class="o-admin sw" x="484" y="486" width="14" height="14" rx="3"/><text class="s" x="504" y="498">Admin</text><rect class="o-pic sw" x="564" y="486" width="14" height="14" rx="3"/><text class="s" x="584" y="498">PIC</text><rect class="o-sys sw" x="624" y="486" width="14" height="14" rx="3"/><text class="s" x="644" y="498">Sistem</text><text class="s" x="414" y="522">Warna = pemilik utama; label = yang terlibat</text></g><line class="rail" x1="10" y1="36" x2="10" y2="554"/><line class="rail" x1="760" y1="36" x2="760" y2="554"/><line class="bar" x1="10" y1="554" x2="760" y2="554"/><path class="ln" d="M385,554 L385,584" marker-end="url(#ah2)"/><g><polygon class="n dm" points="385,584 595,624 385,664 175,624"/><text class="t mid" x="385" y="621">GATE A: semua langkah</text><text class="t mid" x="385" y="638">wajib 1-9 selesai?</text></g><text class="lbl" x="393" y="680">Ya</text><path class="ln dash" d="M175,624 L14,624 L14,544" marker-end="url(#ah2)"/><text class="lbl" x="24" y="616">Belum: kembali</text><text class="phase2" x="400" y="716">FASE B · PRA-BERANGKAT (BERURUTAN)</text><g><rect class="n o-pic" x="20" y="730" width="350" height="80" rx="10"/><circle class="bd" cx="42" cy="754" r="12"/><text class="bdt" x="42" y="758">B1</text><text class="tag tg-pic" x="64" y="746">PIC · CPMI</text><text class="t" x="64" y="764">OPP (Orientasi Pra Pemberangkatan)</text><text class="s" x="64" y="782">PIC daftarkan via Sisko; CPMI hadir sesuai jadwal</text><text class="s dep" x="64" y="798">Syarat: paspor + visa + PK; BPJS selama/purna</text></g><g><rect class="n o-cpmi" x="400" y="730" width="350" height="80" rx="10"/><circle class="bd" cx="422" cy="754" r="12"/><text class="bdt" x="422" y="758">B2</text><text class="tag tg-cpmi" x="444" y="746">CPMI · PIC</text><text class="t" x="444" y="764">Pencocokan biometrik</text><text class="s" x="444" y="782">CPMI hadir langsung; dicatat di Sisko</text><text class="s dep" x="444" y="798">Syarat: OPP selesai</text></g><g><rect class="n o-pic" x="400" y="830" width="350" height="80" rx="10"/><circle class="bd" cx="422" cy="854" r="12"/><text class="bdt" x="422" y="858">B3</text><text class="tag tg-pic" x="444" y="846">PIC</text><text class="t" x="444" y="864">E-KPMI terbit</text><text class="s" x="444" y="882">PIC cek &amp; simpan E-KPMI (tanpa biaya)</text><text class="s dep" x="444" y="898">Syarat: biometrik tercatat</text></g><g><rect class="n o-pic" x="20" y="830" width="350" height="80" rx="10"/><circle class="bd" cx="42" cy="854" r="12"/><text class="bdt" x="42" y="858">B4</text><text class="tag tg-pic" x="64" y="846">PIC · CPMI</text><text class="t" x="64" y="864">Tiket, jadwal, keberangkatan</text><text class="s" x="64" y="882">PIC informasikan jadwal; CPMI berangkat</text><text class="s dep" x="64" y="898">Syarat: E-KPMI sudah ada</text></g><path class="ln" d="M370,770 L400,770" marker-end="url(#ah2)"/><path class="ln" d="M575,810 L575,830" marker-end="url(#ah2)"/><path class="ln" d="M400,870 L370,870" marker-end="url(#ah2)"/><path class="ln" d="M385,664 L385,688 L195,688 L195,730" marker-end="url(#ah2)"/></svg></div>
+    <figcaption>Diagram 2. Detail processing. Urutan OPP, biometrik, dan E-KPMI mengikuti Permen KP2MI 2/2026 Pasal 35, 39, 40. Syarat visa dan lainnya adalah usulan awal.</figcaption>
+  </figure>
+  <h3>Aturan template</h3>
+  <ul>
+    <li>Template dipilih berdasarkan kode unik (negara + profesi). Langkah khusus, misalnya <b>Enjaz &amp; Basma</b> untuk Saudi, ditambahkan Admin.</li>
+    <li>Langkah CPMI muncul di portal CPMI sebagai tugas dengan tenggat. Langkah PIC muncul di inbox PIC.</li>
+    <li>Gate menolak lanjut ke OPP atau berangkat bila ada langkah wajib belum selesai. Hanya Superadmin yang bisa override, dengan alasan tercatat.</li>
+    <li>Template awal yang lengkap baru Saudi (dari contoh Instagram). Taiwan, Jepang, Korea Selatan, dan Dubai menunggu daftar langkah dari owner.</li>
+  </ul>
+
+  <h2>6. Kode unik dan kuota</h2>
+  <ul>
+    <li>Format usulan: <code>{NEGARA}-{PROFESI}-{YYMM}-{NN}</code>, contoh <code>TW-CGV-2611-01</code>. Satu kode = satu negara + satu profesi + satu batch.</li>
+    <li>Kuota berasal dari surat permintaan (demand letter) di SIP2MI. Kode wajib menyimpan nomor SIP2MI, mitra usaha / pemberi kerja, dan tanggal tutup. Seleksi mengikuti kualifikasi jabatan di surat tersebut (Permen 2/2026 Pasal 25, 31).</li>
+    <li>Aturan hitung: <code>Kuota = Reserved + Terpakai + Sisa</code>, dan <code>Sisa ≥ 0</code>.</li>
+    <li><b>Reserved</b> saat status <code>LULUS</code>. <b>Terpakai</b> saat Perjanjian Penempatan ditandatangani. <b>Dilepas</b> saat <code>MUNDUR</code> / <code>DITOLAK</code> / tanpa progres 14 hari (usulan).</li>
+    <li>Sisa = 0: pendaftar baru masuk waiting list (FIFO). Saat kuota dilepas, antrean teratas ditawari. Kode yang ditutup atau kedaluwarsa hilang dari pilihan form.</li>
+  </ul>
+  <div class="tbl"><table><thead><tr><th>Kode</th><th>Negara</th><th>Profesi</th><th>Kuota</th><th>Terpakai</th><th>Reserved</th><th>Sisa</th></tr></thead><tbody><tr><td><code>TW-CGV-2611-01</code></td><td>Taiwan</td><td>Caregiver</td><td>20</td><td>6</td><td>4</td><td>10</td></tr><tr><td><code>SA-DOM-2611-01</code></td><td>Arab Saudi</td><td>Domestik</td><td>30</td><td>12</td><td>9</td><td>9</td></tr><tr><td><code>JP-CGV-2612-01</code></td><td>Jepang</td><td>Caregiver</td><td>10</td><td>0</td><td>10</td><td>0</td></tr></tbody></table></div>
+  <p class="gx-lede" style="font-size:13px">Data contoh, bukan data BGS. Baris ketiga: sisa 0, pendaftar berikutnya masuk waiting list.</p>
+
+  <h2>7. Dashboard dan pelaporan</h2>
+  <div class="tbl"><table><thead><tr><th>Widget</th><th>Menjawab</th></tr></thead><tbody><tr><td>Funnel per fase</td><td>Berapa worker di tiap status (filter negara, profesi, PIC, periode)</td></tr><tr><td>Kuota per kode</td><td>Total, reserved, terpakai, sisa; kode yang hampir penuh atau hampir tutup</td></tr><tr><td>Worker macet</td><td>Tidak ada progres lebih dari N hari, per langkah dan PIC</td></tr><tr><td>Beban PIC</td><td>Jumlah worker aktif dan tugas terlambat per PIC</td></tr><tr><td>Kepatuhan lapor</td><td>Keberangkatan belum dilapor, pemantauan belum 1x, kepulangan belum dilapor</td></tr><tr><td>Dokumen hampir kedaluwarsa</td><td>Medical, paspor, visa</td></tr><tr><td>Output</td><td>Jumlah berangkat per bulan per negara</td></tr></tbody></table></div>
+  <div class="gx-callout">
+    <b>Kewajiban lapor P3MI (Permen KP2MI 2/2026).</b> Setiap keberangkatan dilaporkan ke Menteri/Kepala, tembusan Perwakilan RI atau KDEI (Ps. 41). Hasil pemantauan selama bekerja dilaporkan minimal 1 kali (Ps. 43). Kepulangan dan perpanjangan Perjanjian Kerja juga dilaporkan; yang tidak lapor bisa kena sanksi administratif (Ps. 44). Aplikasi menyiapkan datanya, input resmi tetap di Sisko P2MI.
+  </div>
+
+  <h2>8. Kebutuhan fitur</h2>
+  <div class="tbl"><table><thead><tr><th>ID</th><th>Kebutuhan</th><th>Prioritas</th></tr></thead><tbody><tr><td>FR-01</td><td><b>Form CV dan dokumen.</b> Form publik untuk HP lewat link / QR, bisa simpan draf. Data identitas mengikuti Sisko (NIK, nama, tanggal lahir, nama ibu kandung, email, telepon). Unggah pas foto, KTP, KK, izin keluarga, sertifikat kompetensi, kartu BPJS Kesehatan. Admin bisa input atas nama CPMI. NIK ganda terdeteksi.</td><td>P0</td></tr><tr><td>FR-02</td><td><b>Screening.</b> Checklist per dokumen (valid / revisi + catatan), jadwal dan hasil interview, skor skill per profesi, keputusan beserta alasan.</td><td>P0</td></tr><tr><td>FR-03</td><td><b>PIC dan akses.</b> Satu PIC wajib per worker sejak <code>LULUS</code>; pergantian PIC tercatat. PIC hanya melihat worker miliknya, CPMI hanya datanya sendiri.</td><td>P0</td></tr><tr><td>FR-04</td><td><b>Kode unik dan kuota.</b> Master kode (negara, profesi, batch, kuota, nomor SIP2MI, mitra usaha, tanggal tutup). Reserve, terpakai, dan lepas kuota otomatis; tolak bila melebihi; waiting list FIFO.</td><td>P0</td></tr><tr><td>FR-05</td><td><b>Template dan processing.</b> Template langkah per kode (pemilik, syarat, wajib / opsional, jenis bukti, tenggat). Inbox PIC dan portal tugas CPMI; unggah bukti, PIC verifikasi. Gate Fase A dan OPP; override hanya Superadmin.</td><td>P0</td></tr><tr><td>FR-06</td><td><b>Keberangkatan.</b> Tanggal, tiket, pemberi kerja; paket data laporan keberangkatan siap ekspor.</td><td>P0</td></tr><tr><td>FR-07</td><td><b>Audit log dan dashboard.</b> Log untuk status, dokumen, kuota, PIC, override. Dashboard sesuai bagian 7.</td><td>P0</td></tr><tr><td>FR-08</td><td><b>Pengingat.</b> WhatsApp / email ke CPMI dan PIC; eskalasi langkah macet.</td><td>P1</td></tr><tr><td>FR-09</td><td><b>Pasca-berangkat.</b> Pemantauan, kepulangan, perpanjangan; widget kepatuhan lapor.</td><td>P1</td></tr><tr><td>FR-10</td><td><b>Peringatan dokumen hampir kedaluwarsa.</b></td><td>P2</td></tr></tbody></table></div>
+  <p><b>Non-fungsional.</b> Data pribadi sensitif (NIK, paspor, hasil medical) dibatasi per role, dienkripsi, dan mengikuti UU Pelindungan Data Pribadi. Mobile-first, hemat kuota internet, foto dikompres, Bahasa Indonesia. Audit log tidak bisa diubah dari UI; backup harian.</p>
+
+  <h2>9. Pertanyaan terbuka</h2>
+  <div class="tbl"><table><thead><tr><th>#</th><th>Pertanyaan ke owner</th><th>Asumsi sementara</th></tr></thead><tbody><tr><td>1</td><td>Mana yang lebih dulu: daftar Sisko atau screening? (lihat bagian 3)</td><td>Screening = pra-seleksi internal</td></tr><tr><td>2</td><td>Kapan kuota di-reserve?</td><td>Saat <code>LULUS</code>; lepas otomatis setelah 14 hari tanpa progres</td></tr><tr><td>3</td><td>Jepang dan Korea Selatan lewat P3MI atau jalur pemerintah? (EPS Korea adalah penempatan pemerintah, bukan P3MI)</td><td>Hanya jalur yang dikerjakan BGS sebagai P3MI</td></tr><tr><td>4</td><td>Daftar langkah tiap negara (Taiwan, Jepang, Korea, Dubai)</td><td>Template default + Saudi</td></tr><tr><td>5</td><td>Satu PIC per worker, atau PIC berbeda per langkah?</td><td>Satu PIC utama, boleh ada penanggung per tugas</td></tr><tr><td>6</td><td>Lapor ke Sisko: input manual atau ada akses integrasi? Seperti apa contoh laporan KP2MI / Disnaker?</td><td>Manual dari data ekspor; format dari pasal pelaporan</td></tr><tr><td>7</td><td>Biaya penempatan dan pembayaran masuk aplikasi?</td><td>Di luar PRD ini</td></tr><tr><td>8</td><td>Perlu role tambahan (keuangan, auditor, sponsor lapangan)?</td><td>Hanya 4 role</td></tr></tbody></table></div>
+
+  <h2>10. Tahap rilis</h2>
+  <ul>
+    <li><b>Rilis 1 (P0)</b> Form CV, screening, kode dan kuota, role, processing + gate, keberangkatan, dashboard dasar.</li>
+    <li><b>Rilis 2 (P1)</b> Pengingat WhatsApp, pasca-berangkat, kepatuhan lapor.</li>
+    <li><b>Rilis 3</b> Peringatan kedaluwarsa, biaya penempatan, integrasi bila tersedia.</li>
+  </ul>
+
+  <h2>Referensi</h2>
+  <ul>
+    <li><a href="https://jdih.bp2mi.go.id/uploads/20260306/20260306210030_889000740_Salinan_Peraturan_Menteri_Nomor_2_Tahun_2026_tentang_Tata_Cara_Penempatan_oleh_Pelaksana_Penempatan_preview.pdf">Permen KP2MI/BP2MI No. 2 Tahun 2026, Tata Cara Penempatan PMI oleh Pelaksana Penempatan</a>: Ps. 27-41 (tahapan P3MI), 25 (SIP2MI), 43-44 (pelaporan).</li>
+    <li><a href="https://sipena.bp2mi.go.id/assets/uploads/kp2mi/mikro/FIX_SOP_Mikro_-_Pendaftaran_Seleksi_dan_Penandatangan_Perjanjian_Penempatan.pdf">SOP Mikro KP2MI: Pendaftaran, Seleksi, dan Penandatanganan Perjanjian Penempatan oleh P3MI</a>.</li>
+    <li><a href="https://siskop2mi.bp2mi.go.id/publik/faq">SISKOP2MI FAQ</a> (kewajiban BPJS Ketenagakerjaan).</li>
+    <li>Profil perusahaan, interview owner, dan contoh langkah Instagram BGS (dari brief).</li>
+  </ul>
+  <p>Ringkasan aturan di atas bukan nasihat hukum. Validasi dulu dengan penanggung jawab kepatuhan BGS sebelum dikunci di template.</p>
+</gx-page>
+</body>
+</html>
