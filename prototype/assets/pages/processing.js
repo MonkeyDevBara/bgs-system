@@ -399,16 +399,12 @@
       if (ver.expiresAt && new Date(ver.expiresAt) < needD) return { tone: 'red', text: dt.id === 'DT08' ? `Berlaku < ${D.settings.passportMinMonths} bln saat berangkat` : 'Kedaluwarsa sebelum berangkat', doc: ver };
       return { tone: 'green', text: 'Terverifikasi', doc: ver };
     }
-    function revealDoc(d) {
-      ui.reasonPrompt({ title: 'Buka dokumen RESTRICTED', message: 'Akses ini tercatat di audit trail (RUL-021).', label: 'Alasan membuka dokumen', presets: ['Verifikasi akhir', 'Pemeriksaan dokumen', 'Pengisian formulir resmi'] }).then(r => { if (!r) return; BGS.audit('Akses dokumen RESTRICTED', 'Document', d.id, `Case ${c.id} · Alasan: ${r}`); ui.toast('Dokumen dibuka (simulasi) — akses tercatat di audit', 'info'); });
-    }
     function docsTab() {
       const docs = D.documents.filter(d => d.status !== 'SUPERSEDED' && ((d.ownerType === 'worker' && d.ownerId === c.workerId) || (d.ownerType === 'case' && d.ownerId === c.id)));
       const req = DOM().requiredDocTypes(c);
       const reqRows = req.map(dt => Object.assign({ dt }, docStateFor(dt, docs)));
       const okN = reqRows.filter(r => r.tone === 'green').length;
       const all = docs.slice().sort((a, b) => a.typeId.localeCompare(b.typeId));
-      const canView = d => (D.docType(d.typeId).sensitivity !== 'RESTRICTED') || BGS.can('document.restricted.view');
       return h('div', { class: 'stack' },
         ui.callout(okN === req.length ? 'good' : 'warn', `Dokumen wajib verifikasi akhir: ${okN}/${req.length} terpenuhi`, 'Syarat RUL-018: wajib VERIFIED dan tidak kedaluwarsa pada tanggal rencana berangkat (' + BGS.fmt.date(c.plannedDeparture) + '); paspor minimal ' + D.settings.passportMinMonths + ' bulan.'),
         ui.card({ title: 'Kelengkapan dokumen wajib', flush: true, actions: [h('a', { class: 'btn btn-sm', href: '#/documents?owner=' + c.workerId }, 'Dokumen worker'), h('a', { class: 'btn btn-sm', href: '#/documents?owner=' + c.id }, 'Dokumen case')], body: ui.table({ rows: reqRows, pageSize: 12, dense: true, columns: [
@@ -416,8 +412,8 @@
           { label: 'Status', render: r => ui.badge(r.text, r.tone, { dot: true }) }, { label: 'Berlaku sampai', render: r => (r.doc && r.doc.expiresAt ? BGS.fmt.date(r.doc.expiresAt) : '—') },
         ] }) }),
         ui.card({ title: 'Semua dokumen terkait', subtitle: 'Dokumen worker dan dokumen khusus case. Versi lama (SUPERSEDED) disembunyikan.', flush: true, body: ui.table({ rows: all, pageSize: 8, empty: ui.emptyState({ icon: 'folder', title: 'Belum ada dokumen', text: 'Unggah dokumen lewat menu Dokumen.' }), columns: [
-          { label: 'Jenis', render: d => { const dt = D.docType(d.typeId); return h('div', null, h('b', null, dt.name), h('div', { class: 'xs' }, ui.badge(BGS.ST.sensitivity[dt.sensitivity][0], BGS.ST.sensitivity[dt.sensitivity][1]))); } },
-          { label: 'Berkas', render: d => (canView(d) ? h('span', { class: 'row gap-sm' }, h('span', { class: 'mono' }, D.docType(d.typeId).sensitivity === 'RESTRICTED' ? d.filename.replace(/[^.]+(?=\.)/, m => m.slice(0, 3) + '•••••') : d.filename), D.docType(d.typeId).sensitivity === 'RESTRICTED' && ui.btn('', { icon: 'eye', sm: true, title: 'Buka (tercatat di audit)', onClick: () => revealDoc(d) })) : h('span', { class: 'muted sm' }, BGS.icon('lock', 12), ' Tidak ada akses (RESTRICTED)')) },
+          { label: 'Jenis', render: d => h('b', null, D.docType(d.typeId).name) },
+          { label: 'Berkas', render: d => h('span', { class: 'mono' }, d.filename) },
           { label: 'Pemilik', render: d => (d.ownerType === 'case' ? 'Case' : 'Worker') }, { label: 'Status', render: d => ui.status('document', d.status) },
           { label: 'Kedaluwarsa', render: d => (d.expiresAt ? h('span', { style: new Date(d.expiresAt) < new Date(c.plannedDeparture) ? 'color:var(--red);font-weight:700' : '' }, BGS.fmt.date(d.expiresAt)) : '—') },
         ] }) }));

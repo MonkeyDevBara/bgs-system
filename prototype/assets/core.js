@@ -52,7 +52,7 @@
     database: 'M12 8c4.97 0 9-1.34 9-3s-4.03-3-9-3-9 1.34-9 3 4.03 3 9 3zM21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5', key: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4',
     activity: 'M22 12h-4l-3 9L9 3l-3 9H2', plane: 'M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z',
     'arrow-right': 'M5 12h14M12 5l7 7-7 7', 'arrow-up': 'M12 19V5M5 12l7-7 7 7', 'arrow-down': 'M12 5v14M19 12l-7 7-7-7', 'log-out': 'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9', info: 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 16v-4M12 8h.01',
-    'x-circle': 'M12 22a10 10 0 100-20 10 10 0 000 20zM15 9l-6 6M9 9l6 6', 'check-circle': 'M22 11.08V12a10 10 0 11-5.93-9.14M22 4L12 14.01l-3-3', sparkle: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
+    'x-circle': 'M12 22a10 10 0 100-20 10 10 0 000 20zM15 9l-6 6M9 9l6 6', 'check-circle': 'M22 11.08V12a10 10 0 11-5.93-9.14M22 4L12 14.01l-3-3',
     copy: 'M20 9h-9a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-9a2 2 0 00-2-2zM5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1', merge: 'M8 6l4-4 4 4M12 2v10.3a4 4 0 01-1.17 2.83L4 22M20 22l-5-5', menu: 'M3 12h18M3 6h18M3 18h18', map: 'M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4zM8 2v16M16 6v16', pause: 'M6 4h4v16H6zM14 4h4v16h-4z', play: 'M5 3l14 9-14 9V3z', printer: 'M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z',
   };
   BGS.icon = (name, size = 18, cls) => {
@@ -73,15 +73,12 @@
     num: n => new Intl.NumberFormat('id-ID').format(n), pct: (a, b) => (b ? Math.round((a / b) * 100) : 0) + '%',
     age: dob => Math.floor((BGS.today - toD(dob)) / (365.25 * 86400000)),
   });
-  BGS.mask = {
-    nik: v => (v ? v.slice(0, 4) + '••••••••' + v.slice(-4) : '—'), passport: v => (v ? v.slice(0, 1) + '••••' + v.slice(-3) : '—'), phone: v => (v ? v.slice(0, 4) + '••••' + v.slice(-3) : '—'),
-  };
   BGS.nextId = (prefix, list, key = 'id', width = 5) => `${prefix}${String(list.length + 1).padStart(width, '0')}`;
   BGS.download = (filename, text, mime = 'text/csv') => { const a = h('a', { href: URL.createObjectURL(new Blob([text], { type: mime + ';charset=utf-8' })), download: filename }); document.body.appendChild(a); a.click(); a.remove(); };
   BGS.exportCsv = (rows, cols, filename) => {
     const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
     BGS.download(filename, [cols.map(c => esc(c.label)).join(','), ...rows.map(r => cols.map(c => esc(typeof c.value === 'function' ? c.value(r) : r[c.key])).join(','))].join('\n'));
-    BGS.audit('Ekspor data', 'Laporan', filename, `${rows.length} baris (data sensitif disamarkan)`);
+    BGS.audit('Ekspor data', 'Laporan', filename, `${rows.length} baris`);
   };
 
   // ====================== state / roles / permissions ======================
@@ -94,9 +91,9 @@
   BGS.role = () => BGS.state.role;
   BGS.isRole = (...r) => r.includes(BGS.state.role);
   const PERM = {
-    'worker.write': ['superadmin', 'admin'], 'registration.review': ['superadmin', 'admin'], import: ['superadmin', 'admin'], 'pii.reveal': ['superadmin', 'admin', 'director', 'pic'],
+    'worker.write': ['superadmin', 'admin'], 'registration.review': ['superadmin', 'admin'], import: ['superadmin', 'admin'],
     'application.screen': ['superadmin', 'admin', 'pic'], 'application.decide': ['superadmin', 'admin'], 'document.upload': ['superadmin', 'admin', 'pic'], 'document.verify': ['superadmin', 'admin', 'pic'],
-    'document.restricted.view': ['superadmin', 'admin', 'director', 'pic'], 'master.write': ['superadmin'], 'partner.write': ['superadmin', 'admin'], 'quota.total.change': ['superadmin'], 'quota.total.request': ['admin'],
+    'master.write': ['superadmin'], 'partner.write': ['superadmin', 'admin'], 'quota.total.change': ['superadmin'], 'quota.total.request': ['admin'],
     'case.allocate': ['superadmin', 'admin'], 'pic.assign': ['superadmin', 'admin'], 'task.execute': ['superadmin', 'admin', 'pic'], 'task.verify': ['superadmin', 'admin', 'pic'], 'task.approve': ['superadmin', 'director', 'admin'],
     'final.verify': ['superadmin', 'admin'], 'workflow.write': ['superadmin'], 'workflow.approve': ['director'], 'rule.write': ['superadmin'], 'user.manage': ['superadmin'], 'audit.view': ['superadmin', 'director'],
     'approval.decide': ['director'], settings: ['superadmin'], 'departure.record': ['superadmin', 'admin', 'pic'], 'export': ['superadmin', 'director', 'admin'], 'merge.worker': ['superadmin', 'admin'], 'dsr.manage': ['superadmin', 'admin'],
@@ -131,7 +128,6 @@
     approval: { PENDING: ['Menunggu', 'amber'], APPROVED: ['Disetujui', 'green'], REJECTED: ['Ditolak', 'red'], EXPIRED: ['Kedaluwarsa', 'gray'] },
     template: { DRAFT: ['Draf', 'gray'], PUBLISHED: ['PUBLISHED', 'green'], SUPERSEDED: ['Digantikan', 'gray'] },
     legal: { PERLU_VERIFIKASI: ['Perlu verifikasi hukum', 'amber'], TERVERIFIKASI: ['Terverifikasi hukum', 'green'], INTERNAL: ['Aturan internal', 'blue'] },
-    sensitivity: { INTERNAL: ['Internal', 'gray'], CONFIDENTIAL: ['Rahasia', 'amber'], RESTRICTED: ['RESTRICTED', 'red'] },
     generic: { ACTIVE: ['Aktif', 'green'], INACTIVE: ['Nonaktif', 'gray'], DRAFT: ['Draf', 'gray'], CLOSED: ['Ditutup', 'gray'], OPEN: ['Terbuka', 'green'], PLANNED: ['Direncanakan', 'blue'], DIPROSES: ['Diproses', 'amber'], SELESAI: ['Selesai', 'green'] },
   };
   BGS.ST = ST;
@@ -260,20 +256,6 @@
   ui.stepper = (labels, current) => h('ol', { class: 'wizard' }, labels.map((l, i) => h('li', { class: i < current ? 'done' : i === current ? 'cur' : '' }, h('span', { class: 'wz-n' }, i < current ? BGS.icon('check', 14) : i + 1), h('span', null, l))));
   ui.chips = items => h('div', { class: 'row wrap gap-sm' }, items.map(i => h('span', { class: 'chip static' }, i)));
 
-  // ---------- masking with audited reveal (BR-009) ----------
-  ui.masked = (value, kind, entityId) => {
-    const text = h('span', { class: 'mono' }, BGS.mask[kind](value)); let shown = false;
-    const wrap = h('span', { class: 'masked' }, text);
-    if (BGS.can('pii.reveal') && value) {
-      const btn = h('button', { class: 'icon-btn sm', title: 'Tampilkan (tercatat di audit)', onClick: async () => {
-        if (shown) { shown = false; text.textContent = BGS.mask[kind](value); btn.replaceChildren(BGS.icon('eye', 14)); return; }
-        const r = await ui.reasonPrompt({ title: 'Tampilkan data sensitif', message: 'Akses ini akan tercatat di audit trail.', label: 'Alasan membuka data', presets: ['Verifikasi identitas', 'Pengisian formulir resmi', 'Pemeriksaan dokumen'] });
-        if (!r) return; BGS.audit(`${kind.toUpperCase()} ditampilkan (reveal)`, 'Worker', entityId, 'Alasan: ' + r); shown = true; text.textContent = value; btn.replaceChildren(BGS.icon('eye-off', 14)); setTimeout(() => { if (shown) btn.click(); }, 20000);
-      } }, BGS.icon('eye', 14)); wrap.appendChild(btn);
-    }
-    return wrap;
-  };
-
   // ---------- charts (inline SVG) ----------
   const NS = 'http://www.w3.org/2000/svg';
   const sv = (tag, a, ...k) => { const e = document.createElementNS(NS, tag); for (const [x, v] of Object.entries(a || {})) e.setAttribute(x, v); k.forEach(c => c && e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c)); return e; };
@@ -362,25 +344,16 @@
   // ====================== login ======================
   function login() {
     const root = BGS.$('#app'); BGS.clear(root); document.body.classList.add('is-login');
-    let step = 0, picked = 'admin';
+    let picked = 'admin';
     const card = h('div', { class: 'login-card' }); const draw = () => {
       BGS.clear(card);
       card.appendChild(h('div', { class: 'login-brand' }, h('div', { class: 'logo' }, 'BGS'), h('div', null, h('b', null, 'BGS Workforce Management'), h('div', { class: 'muted sm' }, 'PT Berkah Guna Selaras · Prototipe UI'))));
-      if (step === 0) {
-        card.appendChild(h('h2', null, 'Masuk ke sistem'));
-        card.appendChild(h('p', { class: 'muted' }, 'Pilih akun demo untuk melihat tampilan tiap peran. Tidak perlu kata sandi sungguhan.'));
-        card.appendChild(h('div', { class: 'role-grid' }, Object.entries(BGS.roles).map(([k, l]) => { const u = D.user(D.demoUserByRole[k]); return h('button', { class: 'role-card' + (picked === k ? ' on' : ''), onClick: () => { picked = k; draw(); } }, ui.avatar(u.name, '#1D4ED8', 36), h('div', { class: 'tl' }, h('b', null, l), h('div', { class: 'muted sm' }, u.name))); })));
-        card.appendChild(h('label', { class: 'field' }, h('span', { class: 'lbl' }, 'Email'), h('input', { class: 'input', value: D.user(D.demoUserByRole[picked]).email, readonly: true })));
-        card.appendChild(h('label', { class: 'field' }, h('span', { class: 'lbl' }, 'Kata sandi'), h('input', { class: 'input', type: 'password', value: 'demo-password', readonly: true })));
-        card.appendChild(h('button', { class: 'btn btn-primary btn-block', onClick: () => { if (['superadmin', 'director', 'admin'].includes(picked)) { step = 1; draw(); } else done(); } }, 'Masuk'));
-      } else {
-        card.appendChild(h('h2', null, 'Verifikasi 2 langkah'));
-        card.appendChild(h('p', { class: 'muted' }, 'Superadmin, Director, dan Admin wajib memakai kode 2FA (TOTP). Untuk demo, masukkan 6 digit apa pun.'));
-        const code = h('input', { class: 'input code', maxlength: 6, placeholder: '123456', inputmode: 'numeric' });
-        card.appendChild(h('label', { class: 'field' }, h('span', { class: 'lbl' }, 'Kode dari aplikasi autentikator'), code));
-        card.appendChild(h('button', { class: 'btn btn-primary btn-block', onClick: () => (/^\d{6}$/.test(code.value) ? done() : ui.toast('Masukkan 6 digit angka', 'warn')) }, 'Verifikasi'));
-        card.appendChild(h('button', { class: 'btn btn-ghost btn-block', onClick: () => { step = 0; draw(); } }, 'Kembali'));
-      }
+      card.appendChild(h('h2', null, 'Masuk ke sistem'));
+      card.appendChild(h('p', { class: 'muted' }, 'Pilih akun demo untuk melihat tampilan tiap peran. Tidak perlu kata sandi sungguhan.'));
+      card.appendChild(h('div', { class: 'role-grid' }, Object.entries(BGS.roles).map(([k, l]) => { const u = D.user(D.demoUserByRole[k]); return h('button', { class: 'role-card' + (picked === k ? ' on' : ''), onClick: () => { picked = k; draw(); } }, ui.avatar(u.name, '#1D4ED8', 36), h('div', { class: 'tl' }, h('b', null, l), h('div', { class: 'muted sm' }, u.name))); })));
+      card.appendChild(h('label', { class: 'field' }, h('span', { class: 'lbl' }, 'Email'), h('input', { class: 'input', value: D.user(D.demoUserByRole[picked]).email, readonly: true })));
+      card.appendChild(h('label', { class: 'field' }, h('span', { class: 'lbl' }, 'Kata sandi'), h('input', { class: 'input', type: 'password', value: 'demo-password', readonly: true })));
+      card.appendChild(h('button', { class: 'btn btn-primary btn-block', onClick: done }, 'Masuk'));
       card.appendChild(h('div', { class: 'login-foot muted sm' }, 'Semua data di prototipe ini fiktif dan hanya tersimpan di memori browser.'));
     };
     const done = () => { BGS.state = Object.assign(BGS.state, { loggedIn: true, role: picked, userId: D.demoUserByRole[picked] }); BGS.saveState(); BGS.audit('Login berhasil', 'User', BGS.state.userId, ''); document.body.classList.remove('is-login'); if (!location.hash) location.hash = '#/dashboard'; boot(); };

@@ -52,7 +52,6 @@
       { path: '/audit', label: 'Audit trail', icon: 'shield', roles: [SA, DI], mvp: 1 },
       { path: '/data-protection', label: 'Perlindungan data', icon: 'lock', roles: [SA, DI, AD], mvp: 1 },
       { path: '/settings', label: 'Pengaturan sistem', icon: 'settings', roles: [SA], mvp: 1 },
-      { path: '/ai', label: 'Asisten AI', icon: 'sparkle', roles: [SA, DI, AD], mvp: 3 },
       { path: '/integrations', label: 'Integrasi eksternal', icon: 'plug', roles: [SA], mvp: 3 },
     ] },
   ];

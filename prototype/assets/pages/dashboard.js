@@ -265,10 +265,10 @@
   // ====================================================================
   function dashExec(ctx, viewer) {
     const M = metrics(), mv = MVP(), out = [];
-    out.push(ui.pageHeader({ title: greet(), subtitle: viewer ? 'Ringkasan hanya-baca. Data pribadi (NIK, paspor, telepon) tidak ditampilkan untuk Viewer.' : `Ringkasan eksekutif per ${fmt.date(NOW())}: pipeline, case, kuota, dan risiko — tanpa rekap manual.`,
+    out.push(ui.pageHeader({ title: greet(), subtitle: viewer ? 'Ringkasan hanya-baca: pipeline, case, kuota, dan risiko.' : `Ringkasan eksekutif per ${fmt.date(NOW())}: pipeline, case, kuota, dan risiko — tanpa rekap manual.`,
       actions: [abtn('Laporan', '/reports', null, 'bar-chart'), abtn('Analitik lanjutan', '/dashboard/advanced', 'primary', 'trending-up')] }));
     out.push(mvpNote());
-    if (viewer) out.push(ui.callout('info', 'Mode baca-saja (Viewer)', 'Anda dapat melihat ringkasan dan laporan terbatas. Tombol ubah/ekspor data sensitif dinonaktifkan (BR-027).'));
+    if (viewer) out.push(ui.callout('info', 'Mode baca-saja (Viewer)', 'Anda dapat melihat ringkasan dan laporan terbatas. Tombol ubah dan ekspor data dinonaktifkan (BR-027).'));
     const k = [
       kpi({ label: 'Worker aktif', value: num(M.workerActive.length), sub: `${num(M.workers.length)} total · ${M.workers.filter(w => w.status === 'DEPLOYED').length} sudah berangkat`, tone: 'blue', icon: 'users', href: '/workers' }),
       kpi({ label: 'Lamaran di pipeline', value: num(M.pipeline.length), sub: `${M.apps.filter(a => a.status === 'ALLOCATED').length} dialokasikan · ${M.apps.filter(a => a.status === 'REJECTED').length} ditolak`, tone: 'purple', icon: 'clipboard', href: '/applications' }),
@@ -363,33 +363,23 @@
   function dashSuper(ctx) {
     const M = metrics(), mv = MVP(), out = [];
     const users = D.users.filter(u => u.active);
-    const need2fa = users.filter(u => u.roles.some(r => ['superadmin', 'director', 'admin'].includes(r)));
-    const ok2fa = need2fa.filter(u => u.twofa);
     const tplPub = D.templates.filter(t => t.versions.some(v => v.status === 'PUBLISHED')), tplDraft = D.templates.filter(t => t.versions.some(v => v.status === 'DRAFT'));
     const rulesLegal = D.requirements.filter(r => r.legal === 'PERLU_VERIFIKASI'), refsLegal = D.regRefs.filter(r => r.legal === 'PERLU_VERIFIKASI');
-    out.push(ui.pageHeader({ title: greet(), subtitle: `Tampilan sistem per ${fmt.date(NOW())}: keamanan akun, template, aturan, dan antrean operasional.`, actions: [abtn('Pengguna', '/users', 'primary', 'user'), abtn('Audit trail', '/audit', null, 'shield'), abtn('Pengaturan', '/settings', null, 'settings')] }));
+    out.push(ui.pageHeader({ title: greet(), subtitle: `Tampilan sistem per ${fmt.date(NOW())}: akun, template, aturan, dan antrean operasional.`, actions: [abtn('Pengguna', '/users', 'primary', 'user'), abtn('Audit trail', '/audit', null, 'shield'), abtn('Pengaturan', '/settings', null, 'settings')] }));
     out.push(mvpNote());
     const k = [
       kpi({ label: 'Pengguna aktif', value: num(users.length), sub: `${D.users.length - users.length} nonaktif · ${users.filter(u => u.roles.includes('pic')).length} PIC`, tone: 'blue', icon: 'user', href: '/users' }),
-      kpi({ label: '2FA wajib aktif', value: `${ok2fa.length}/${need2fa.length}`, sub: ok2fa.length === need2fa.length ? 'Semua akun wajib sudah 2FA' : `${need2fa.length - ok2fa.length} akun belum 2FA`, tone: ok2fa.length === need2fa.length ? 'green' : 'red', icon: 'lock', href: '/users' }),
       kpi({ label: 'Aturan perlu verifikasi hukum', value: num(rulesLegal.length), sub: `${refsLegal.length} rujukan regulasi juga menunggu (RUL-024)`, tone: 'amber', icon: 'list', href: '/compliance/rules' }),
     ];
     if (mv >= 2) k.push(
       kpi({ label: 'Template workflow', value: `${tplPub.length} / ${tplDraft.length}`, sub: 'PUBLISHED / punya versi DRAFT', tone: 'purple', icon: 'git-branch', href: '/workflows' }),
       kpi({ label: 'Persetujuan menunggu', value: num(M.approvals.length), sub: 'Menunggu keputusan Director', tone: 'amber', icon: 'check-square', href: '/approvals' }));
     out.push(h('div', { class: 'db-kpis' }, k));
-    out.push(h('div', { class: 'grid cols-2' },
-      card('Akun & status 2FA', 'lock', miniTable([
-        { key: 'name', label: 'Pengguna', render: u => h('div', null, h('b', null, u.name), h('div', { class: 'db-mini' }, u.email)) },
-        { key: 'r', label: 'Peran', render: u => h('div', { class: 'row wrap gap-sm' }, u.roles.map(r => ui.roleBadge(r))) },
-        { key: 'f', label: '2FA', render: u => { const req = u.roles.some(r => ['superadmin', 'director', 'admin'].includes(r)); return u.twofa ? ui.badge('Aktif', 'green', { dot: true }) : req ? ui.badge('Belum aktif!', 'red', { dot: true }) : ui.badge('Tidak wajib', 'gray'); } },
-        { key: 'l', label: 'Login terakhir', render: u => fmt.rel(u.last) },
-      ], users, { pageSize: 6 }), { subtitle: 'Superadmin, Director, Admin wajib 2FA (BAC-08)', actions: moreLink('Kelola', '/users') }),
-      card(`Aturan perlu verifikasi hukum (${rulesLegal.length})`, 'list', miniTable([
-        { key: 'name', label: 'Aturan', render: r => h('div', null, r.name, h('div', { class: 'db-mini' }, `${r.type} · ${r.scope.country === '*' ? 'Semua negara' : D.cn(r.scope.country)}`)) },
-        { key: 'l', label: 'Status', render: r => ui.status('legal', r.legal) },
-        { key: 's', label: 'Rule', render: r => ui.status('generic', r.status) },
-      ], rulesLegal, { pageSize: 5, empty: ui.emptyState({ icon: 'check-circle', title: 'Semua aturan terverifikasi' }) }), { subtitle: 'Checklist bukan bukti resmi kepatuhan (RUL-024)', actions: moreLink('Aturan', '/compliance/rules') })));
+    out.push(card(`Aturan perlu verifikasi hukum (${rulesLegal.length})`, 'list', miniTable([
+      { key: 'name', label: 'Aturan', render: r => h('div', null, r.name, h('div', { class: 'db-mini' }, `${r.type} · ${r.scope.country === '*' ? 'Semua negara' : D.cn(r.scope.country)}`)) },
+      { key: 'l', label: 'Status', render: r => ui.status('legal', r.legal) },
+      { key: 's', label: 'Rule', render: r => ui.status('generic', r.status) },
+    ], rulesLegal, { pageSize: 5, empty: ui.emptyState({ icon: 'check-circle', title: 'Semua aturan terverifikasi' }) }), { subtitle: 'Checklist bukan bukti resmi kepatuhan (RUL-024)', actions: moreLink('Aturan', '/compliance/rules') }));
     if (mv >= 2) out.push(h('div', { class: 'grid cols-2' },
       card('Template workflow: DRAFT vs PUBLISHED', 'git-branch', miniTable([
         { key: 'name', label: 'Template', render: t => (allowed('/workflows') ? h('a', { class: 'lnk', href: '#/workflows/' + t.id }, t.name) : t.name) },
@@ -419,9 +409,9 @@
   // Analitik bersama (dipakai /dashboard/advanced dan /reports)
   // ====================================================================
   const EXPORTS = [
-    { at: new Date(NOW() - 2 * DAY).toISOString(), userId: 'U04', report: 'Daftar worker', rows: 42, fmt: 'CSV', note: 'Data sensitif disamarkan' },
-    { at: new Date(NOW() - 5 * DAY).toISOString(), userId: 'U03', report: 'Funnel rekrutmen', rows: 8, fmt: 'CSV', note: 'Data sensitif disamarkan' },
-    { at: new Date(NOW() - 9 * DAY).toISOString(), userId: 'U01', report: 'Dokumen worker', rows: 218, fmt: 'Cetak/PDF', note: 'Data sensitif disamarkan' },
+    { at: new Date(NOW() - 2 * DAY).toISOString(), userId: 'U04', report: 'Daftar worker', rows: 42, fmt: 'CSV' },
+    { at: new Date(NOW() - 5 * DAY).toISOString(), userId: 'U03', report: 'Funnel rekrutmen', rows: 8, fmt: 'CSV' },
+    { at: new Date(NOW() - 9 * DAY).toISOString(), userId: 'U01', report: 'Dokumen worker', rows: 218, fmt: 'Cetak/PDF' },
   ];
   const avg = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
   const r1 = v => (v == null ? null : Math.round(v * 10) / 10);
@@ -663,7 +653,7 @@
   // /reports — katalog laporan (BR-026)
   // ====================================================================
   BGS.addStyle(`.rp-printonly{display:none}@media print{.rp-printonly{display:block!important}.rp-screen{display:none!important}.card{border:0}.card-h .row{display:none}.page-head{margin-bottom:6px}}`);
-  const C = (label, value, sens, extra) => Object.assign({ label, value, sens }, extra);
+  const C = (label, value, extra) => Object.assign({ label, value }, extra);
   const stOpts = d => Object.entries(BGS.ST[d]).map(([k, v]) => [k, v[0]]);
   const cOpts = () => D.countries.map(c => [c.code, c.name]);
   const pOpts = () => D.professions.map(p => [p.code, p.name]);
@@ -679,78 +669,74 @@
     { id: 'R-WRK', group: 1, icon: 'users', title: 'Daftar worker', desc: 'Seluruh worker dengan status, sumber, dan tanggal daftar.', dateFilter: 'Tanggal daftar',
       filters: [{ key: 'status', label: 'Status', options: () => stOpts('worker') }, { key: 'province', label: 'Provinsi', options: () => uniq(D.workers, w => w.province) }, { key: 'source', label: 'Sumber', options: () => uniq(D.workers, w => w.source) }],
       rows: f => D.workers.filter(w => (!f.status || w.status === f.status) && (!f.province || w.province === f.province) && (!f.source || w.source === f.source) && inR(w.createdAt, f)),
-      cols: [C('ID Worker', w => w.id), C('Nama', w => w.name), C('Jenis kelamin', w => (w.gender === 'P' ? 'Perempuan' : 'Laki-laki')), C('Usia', w => fmt.age(w.dob)), C('Kota', w => w.city), C('Provinsi', w => w.province), C('Status', w => stLabel('worker', w.status)), C('Sumber', w => w.source), C('Tanggal daftar', w => fmt.date(w.createdAt), null, { sortValue: w => w.createdAt }), C('Jumlah lamaran', w => D.applications.filter(a => a.workerId === w.id).length), C('NIK', w => w.nik, 'nik'), C('No. paspor', w => w.passport, 'passport'), C('Telepon', w => w.phone, 'phone')],
+      cols: [C('ID Worker', w => w.id), C('Nama', w => w.name), C('Jenis kelamin', w => (w.gender === 'P' ? 'Perempuan' : 'Laki-laki')), C('Usia', w => fmt.age(w.dob)), C('Kota', w => w.city), C('Provinsi', w => w.province), C('Status', w => stLabel('worker', w.status)), C('Sumber', w => w.source), C('Tanggal daftar', w => fmt.date(w.createdAt), { sortValue: w => w.createdAt }), C('Jumlah lamaran', w => D.applications.filter(a => a.workerId === w.id).length), C('NIK', w => w.nik), C('No. paspor', w => w.passport), C('Telepon', w => w.phone)],
       summary: rows => [['Worker', rows.length], ['Perempuan', rows.filter(w => w.gender === 'P').length], ['Punya paspor', rows.filter(w => w.passport).length]] },
     { id: 'R-FUN', group: 1, icon: 'trending-up', title: 'Funnel rekrutmen', desc: 'Jumlah lamaran di tiap tahap seleksi beserta konversinya.', dateFilter: 'Tanggal lamaran', filters: [FX.country, FX.profession],
       rows: f => { const apps = D.applications.filter(a => (!f.country || a.country === f.country) && (!f.profession || a.profession === f.profession) && inR(a.createdAt, f)); const live = apps.filter(a => a.status in RANK); const base = live.length;
         return [...STAGES.map(([label, r]) => ({ label, now: live.filter(a => RANK[a.status] === r).length, reached: live.filter(a => RANK[a.status] >= r).length, base })), { label: 'Ditolak', now: apps.filter(a => a.status === 'REJECTED').length, reached: null, base }, { label: 'Mundur / dibatalkan', now: apps.filter(a => ['WITHDRAWN', 'CANCELLED'].includes(a.status)).length, reached: null, base }]; },
-      cols: [C('Tahap', r => r.label), C('Sedang di tahap ini', r => r.now, null, { num: 1 }), C('Pernah mencapai tahap (kumulatif)', r => (r.reached == null ? '—' : r.reached), null, { num: 1 }), C('% dari lamaran aktif', r => (r.reached == null || !r.base ? '—' : Math.round((r.reached / r.base) * 100) + '%'), null, { num: 1 })],
+      cols: [C('Tahap', r => r.label), C('Sedang di tahap ini', r => r.now, { num: 1 }), C('Pernah mencapai tahap (kumulatif)', r => (r.reached == null ? '—' : r.reached), { num: 1 }), C('% dari lamaran aktif', r => (r.reached == null || !r.base ? '—' : Math.round((r.reached / r.base) * 100) + '%'), { num: 1 })],
       summary: rows => [['Lamaran aktif', rows[0] ? rows[0].base : 0], ['Dialokasikan', rows[5] ? rows[5].now : 0]] },
     { id: 'R-APP', group: 1, icon: 'clipboard', title: 'Lamaran & seleksi', desc: 'Daftar lamaran lengkap dengan skor dan keputusan seleksi.', dateFilter: 'Tanggal lamaran',
       filters: [{ key: 'status', label: 'Status', options: () => stOpts('application') }, FX.country, FX.profession],
       rows: f => D.applications.filter(a => (!f.status || a.status === f.status) && (!f.country || a.country === f.country) && (!f.profession || a.profession === f.profession) && inR(a.createdAt, f)),
-      cols: [C('ID Lamaran', a => a.id), C('Worker', a => wname(a.workerId)), C('Negara', a => D.cn(a.country)), C('Profesi', a => D.pn(a.profession)), C('Jalur', a => routeName(a.route)), C('Status', a => stLabel('application', a.status)), C('Tanggal diajukan', a => fmt.date(a.createdAt), null, { sortValue: a => a.createdAt }), C('Skor wawancara', a => (a.screening.interview.score != null ? a.screening.interview.score : '—')), C('Skor assessment', a => (a.screening.assessment.score != null ? a.screening.assessment.score : '—')), C('Alasan keputusan', a => (a.decision ? a.decision.reason : '—')), C('PIC', a => uname(a.picId))],
+      cols: [C('ID Lamaran', a => a.id), C('Worker', a => wname(a.workerId)), C('Negara', a => D.cn(a.country)), C('Profesi', a => D.pn(a.profession)), C('Jalur', a => routeName(a.route)), C('Status', a => stLabel('application', a.status)), C('Tanggal diajukan', a => fmt.date(a.createdAt), { sortValue: a => a.createdAt }), C('Skor wawancara', a => (a.screening.interview.score != null ? a.screening.interview.score : '—')), C('Skor assessment', a => (a.screening.assessment.score != null ? a.screening.assessment.score : '—')), C('Alasan keputusan', a => (a.decision ? a.decision.reason : '—')), C('PIC', a => uname(a.picId))],
       summary: rows => [['Lamaran', rows.length], ['Di pipeline', rows.filter(a => PIPELINE.includes(a.status)).length], ['Ditolak', rows.filter(a => a.status === 'REJECTED').length]] },
-    { id: 'R-DOC', group: 1, icon: 'folder', title: 'Dokumen worker', desc: 'Status verifikasi, masa berlaku, dan sensitivitas dokumen.', dateFilter: 'Tanggal unggah',
-      filters: [{ key: 'status', label: 'Status', options: () => stOpts('document') }, { key: 'type', label: 'Jenis dokumen', options: () => D.docTypes.map(t => [t.id, t.name]) }, { key: 'sens', label: 'Sensitivitas', options: () => stOpts('sensitivity') }, { key: 'exp', label: 'Masa berlaku', options: () => [['SOON', `Segera kedaluwarsa (≤ ${D.settings.expiryWarningDays} hari)`], ['EXPIRED', 'Sudah kedaluwarsa']] }],
-      rows: f => D.documents.filter(d => (!f.status || d.status === f.status) && (!f.type || d.typeId === f.type) && (!f.sens || (D.docType(d.typeId) || {}).sensitivity === f.sens) && inR(d.uploadedAt, f) && (!f.exp || (f.exp === 'SOON' ? docDays(d) != null && docDays(d) >= 0 && docDays(d) <= D.settings.expiryWarningDays : d.status === 'EXPIRED' || (docDays(d) != null && docDays(d) < 0)))),
-      cols: [C('ID Dokumen', d => d.id), C('Pemilik', docOwner), C('Jenis', d => (D.docType(d.typeId) || {}).name), C('Sensitivitas', d => stLabel('sensitivity', (D.docType(d.typeId) || {}).sensitivity)), C('Status', d => stLabel('document', d.status)), C('Versi', d => d.version), C('Diunggah', d => fmt.date(d.uploadedAt), null, { sortValue: d => d.uploadedAt }), C('Pengunggah', d => uname(d.uploadedBy)), C('Diverifikasi oleh', d => (d.verifiedBy ? uname(d.verifiedBy) : '—')), C('Kedaluwarsa', d => (d.expiresAt ? fmt.date(d.expiresAt) : '—'), null, { sortValue: d => d.expiresAt || '' })],
-      note: 'Daftar ini hanya memuat metadata dokumen. Isi berkas RESTRICTED tidak ikut diekspor (RUL-020).',
+    { id: 'R-DOC', group: 1, icon: 'folder', title: 'Dokumen worker', desc: 'Status verifikasi dan masa berlaku dokumen.', dateFilter: 'Tanggal unggah',
+      filters: [{ key: 'status', label: 'Status', options: () => stOpts('document') }, { key: 'type', label: 'Jenis dokumen', options: () => D.docTypes.map(t => [t.id, t.name]) }, { key: 'exp', label: 'Masa berlaku', options: () => [['SOON', `Segera kedaluwarsa (≤ ${D.settings.expiryWarningDays} hari)`], ['EXPIRED', 'Sudah kedaluwarsa']] }],
+      rows: f => D.documents.filter(d => (!f.status || d.status === f.status) && (!f.type || d.typeId === f.type) && inR(d.uploadedAt, f) && (!f.exp || (f.exp === 'SOON' ? docDays(d) != null && docDays(d) >= 0 && docDays(d) <= D.settings.expiryWarningDays : d.status === 'EXPIRED' || (docDays(d) != null && docDays(d) < 0)))),
+      cols: [C('ID Dokumen', d => d.id), C('Pemilik', docOwner), C('Jenis', d => (D.docType(d.typeId) || {}).name), C('Status', d => stLabel('document', d.status)), C('Versi', d => d.version), C('Diunggah', d => fmt.date(d.uploadedAt), { sortValue: d => d.uploadedAt }), C('Pengunggah', d => uname(d.uploadedBy)), C('Diverifikasi oleh', d => (d.verifiedBy ? uname(d.verifiedBy) : '—')), C('Kedaluwarsa', d => (d.expiresAt ? fmt.date(d.expiresAt) : '—'), { sortValue: d => d.expiresAt || '' })],
+      note: 'Daftar ini hanya memuat metadata dokumen; isi berkas tidak ikut diekspor (RUL-020).',
       summary: rows => [['Dokumen', rows.length], ['Menunggu verifikasi', rows.filter(d => d.status === 'UPLOADED').length], ['Ditolak', rows.filter(d => d.status === 'REJECTED').length], ['Kedaluwarsa', rows.filter(d => d.status === 'EXPIRED').length]] },
     { id: 'R-REG', group: 1, icon: 'inbox', title: 'Registrasi publik', desc: 'Pendaftaran dari website dan hasil tinjauan Admin.', dateFilter: 'Tanggal masuk',
       filters: [{ key: 'status', label: 'Status', options: () => stOpts('registration') }, FX.country],
       rows: f => D.registrations.filter(r => (!f.status || r.status === f.status) && (!f.country || r.country === f.country) && inR(r.submittedAt, f)),
-      cols: [C('ID Registrasi', r => r.id), C('Nama', r => r.name), C('NIK', r => r.nik, 'nik'), C('Telepon', r => r.phone, 'phone'), C('Negara tujuan', r => D.cn(r.country)), C('Profesi', r => D.pn(r.profession)), C('Masuk', r => fmt.dateTime(r.submittedAt), null, { sortValue: r => r.submittedAt }), C('Status', r => stLabel('registration', r.status)), C('Indikasi duplikat', r => (r.dupOf ? 'Ya (' + r.dupOf + ')' : 'Tidak')), C('Ditinjau oleh', r => (r.reviewedBy ? uname(r.reviewedBy) : '—'))],
+      cols: [C('ID Registrasi', r => r.id), C('Nama', r => r.name), C('NIK', r => r.nik), C('Telepon', r => r.phone), C('Negara tujuan', r => D.cn(r.country)), C('Profesi', r => D.pn(r.profession)), C('Masuk', r => fmt.dateTime(r.submittedAt), { sortValue: r => r.submittedAt }), C('Status', r => stLabel('registration', r.status)), C('Indikasi duplikat', r => (r.dupOf ? 'Ya (' + r.dupOf + ')' : 'Tidak')), C('Ditinjau oleh', r => (r.reviewedBy ? uname(r.reviewedBy) : '—'))],
       summary: rows => [['Registrasi', rows.length], ['Baru', rows.filter(r => r.status === 'NEW').length], ['Indikasi duplikat', rows.filter(r => r.dupOf).length]] },
 
     { id: 'R-CAS', group: 2, icon: 'briefcase', title: 'Status pemrosesan', desc: 'Posisi tiap Placement Case: langkah selesai, terlambat, dan rencana berangkat.',
       filters: [{ key: 'status', label: 'Status case', options: () => stOpts('case') }, FX.country, FX.profession],
       rows: f => D.cases.filter(c => (!f.status || c.status === f.status) && (!f.country || c.country === f.country) && (!f.profession || c.profession === f.profession)),
-      cols: [C('Case', c => c.id), C('Worker', c => wname(c.workerId)), C('Negara', c => D.cn(c.country)), C('Profesi', c => D.pn(c.profession)), C('Placement Code', c => c.placementCodeId), C('Template', c => `${c.templateId} v${c.templateVersion}`), C('Status', c => stLabel('case', c.status)), C('Langkah selesai', c => `${caseSteps(c)}/${c.steps.length}`), C('Langkah berjalan', c => c.steps.filter(s => s.status === 'IN_PROGRESS').map(s => s.name).join('; ') || '—'), C('Tugas terlambat', c => D.tasks.filter(t => t.caseId === c.id && overdue(t)).length), C('Case owner', c => uname(c.ownerId)), C('Rencana berangkat', c => fmt.date(c.plannedDeparture), null, { sortValue: c => c.plannedDeparture })],
+      cols: [C('Case', c => c.id), C('Worker', c => wname(c.workerId)), C('Negara', c => D.cn(c.country)), C('Profesi', c => D.pn(c.profession)), C('Placement Code', c => c.placementCodeId), C('Template', c => `${c.templateId} v${c.templateVersion}`), C('Status', c => stLabel('case', c.status)), C('Langkah selesai', c => `${caseSteps(c)}/${c.steps.length}`), C('Langkah berjalan', c => c.steps.filter(s => s.status === 'IN_PROGRESS').map(s => s.name).join('; ') || '—'), C('Tugas terlambat', c => D.tasks.filter(t => t.caseId === c.id && overdue(t)).length), C('Case owner', c => uname(c.ownerId)), C('Rencana berangkat', c => fmt.date(c.plannedDeparture), { sortValue: c => c.plannedDeparture })],
       summary: rows => [['Case', rows.length], ['Aktif', rows.filter(c => ACTIVE_CASE.includes(c.status)).length], ['Punya tugas terlambat', rows.filter(c => D.tasks.some(t => t.caseId === c.id && overdue(t))).length]] },
     { id: 'R-QUO', group: 2, icon: 'layers', title: 'Kuota per Placement Code', desc: 'Total, dicadangkan, terpakai, tersedia, dan utilisasi tiap kode.',
       filters: [FX.country, { key: 'status', label: 'Status kode', options: () => stOpts('code') }],
       rows: f => D.placementCodes.filter(p => (!f.country || p.country === f.country) && (!f.status || p.status === f.status)),
-      cols: [C('Placement Code', p => p.id), C('Job Order', p => p.jobOrderId), C('Partner', p => ((D.partner((D.jobOrder(p.jobOrderId) || {}).partnerId) || {}).name) || '—'), C('Negara', p => D.cn(p.country)), C('Profesi', p => D.pn(p.profession)), C('Total', p => p.total, null, { num: 1 }), C('Dicadangkan', p => p.reserved, null, { num: 1 }), C('Terpakai', p => p.utilized, null, { num: 1 }), C('Tersedia', p => p.available, null, { num: 1 }), C('Utilisasi', p => Math.round(((p.reserved + p.utilized) / p.total) * 100) + '%', null, { num: 1, sortValue: p => (p.reserved + p.utilized) / p.total }), C('Status', p => stLabel('code', p.status))],
+      cols: [C('Placement Code', p => p.id), C('Job Order', p => p.jobOrderId), C('Partner', p => ((D.partner((D.jobOrder(p.jobOrderId) || {}).partnerId) || {}).name) || '—'), C('Negara', p => D.cn(p.country)), C('Profesi', p => D.pn(p.profession)), C('Total', p => p.total, { num: 1 }), C('Dicadangkan', p => p.reserved, { num: 1 }), C('Terpakai', p => p.utilized, { num: 1 }), C('Tersedia', p => p.available, { num: 1 }), C('Utilisasi', p => Math.round(((p.reserved + p.utilized) / p.total) * 100) + '%', { num: 1, sortValue: p => (p.reserved + p.utilized) / p.total }), C('Status', p => stLabel('code', p.status))],
       summary: rows => [['Kode', rows.length], ['Total kuota', rows.reduce((a, p) => a + p.total, 0)], ['Tersedia', rows.reduce((a, p) => a + p.available, 0)]] },
     { id: 'R-DEP', group: 2, icon: 'plane', title: 'Keberangkatan', desc: 'Case siap berangkat dan yang sudah berangkat (RUL-030).',
       note: 'Format laporan resmi ke instansi belum ditetapkan (OQ-14); laporan ini adalah ringkasan internal.',
       filters: [{ key: 'status', label: 'Status', options: () => [['READY_TO_DEPART', 'Siap berangkat'], ['DEPARTED', 'Berangkat']] }, FX.country],
       rows: f => D.cases.filter(c => ['READY_TO_DEPART', 'DEPARTED'].includes(c.status) && (!f.status || c.status === f.status) && (!f.country || c.country === f.country)),
-      cols: [C('Case', c => c.id), C('Worker', c => wname(c.workerId)), C('Negara', c => D.cn(c.country)), C('Profesi', c => D.pn(c.profession)), C('Batch', c => c.batchId || '—'), C('Maskapai', c => (c.flight ? c.flight.airline : '—')), C('No. penerbangan', c => (c.flight ? c.flight.flightNo : '—')), C('Tanggal terbang', c => (c.flight ? fmt.date(c.flight.date) : '—'), null, { sortValue: c => (c.flight ? c.flight.date : '') }), C('No. tiket', c => (c.flight ? c.flight.ticketNo : '—')), C('Status', c => stLabel('case', c.status))],
+      cols: [C('Case', c => c.id), C('Worker', c => wname(c.workerId)), C('Negara', c => D.cn(c.country)), C('Profesi', c => D.pn(c.profession)), C('Batch', c => c.batchId || '—'), C('Maskapai', c => (c.flight ? c.flight.airline : '—')), C('No. penerbangan', c => (c.flight ? c.flight.flightNo : '—')), C('Tanggal terbang', c => (c.flight ? fmt.date(c.flight.date) : '—'), { sortValue: c => (c.flight ? c.flight.date : '') }), C('No. tiket', c => (c.flight ? c.flight.ticketNo : '—')), C('Status', c => stLabel('case', c.status))],
       summary: rows => [['Case', rows.length], ['Sudah berangkat', rows.filter(c => c.status === 'DEPARTED').length], ['Siap berangkat', rows.filter(c => c.status === 'READY_TO_DEPART').length]] },
     { id: 'R-CMP', group: 2, icon: 'check-square', title: 'Kepatuhan (checklist case)', desc: 'Kelengkapan checklist persyaratan tiap case. Alat kontrol internal.', disclaimer: true,
       filters: [{ key: 'status', label: 'Status case', options: () => stOpts('case') }, FX.country],
       rows: f => D.cases.filter(c => c.status !== 'CANCELLED' && (!f.status || c.status === f.status) && (!f.country || c.country === f.country)),
-      cols: [C('Case', c => c.id), C('Worker', c => wname(c.workerId)), C('Negara', c => D.cn(c.country)), C('Status case', c => stLabel('case', c.status)), C('Total syarat', c => c.checklist.length, null, { num: 1 }), C('Wajib', c => c.checklist.filter(x => x.mandatory).length, null, { num: 1 }), C('Wajib terpenuhi', c => c.checklist.filter(x => x.mandatory && x.status === 'MET').length, null, { num: 1 }), C('Wajib belum terpenuhi', c => c.checklist.filter(x => x.mandatory && x.status !== 'MET').length, null, { num: 1 }), C('% terpenuhi', c => (c.checklist.length ? Math.round((c.checklist.filter(x => x.status === 'MET').length / c.checklist.length) * 100) + '%' : '—'), null, { num: 1 })],
+      cols: [C('Case', c => c.id), C('Worker', c => wname(c.workerId)), C('Negara', c => D.cn(c.country)), C('Status case', c => stLabel('case', c.status)), C('Total syarat', c => c.checklist.length, { num: 1 }), C('Wajib', c => c.checklist.filter(x => x.mandatory).length, { num: 1 }), C('Wajib terpenuhi', c => c.checklist.filter(x => x.mandatory && x.status === 'MET').length, { num: 1 }), C('Wajib belum terpenuhi', c => c.checklist.filter(x => x.mandatory && x.status !== 'MET').length, { num: 1 }), C('% terpenuhi', c => (c.checklist.length ? Math.round((c.checklist.filter(x => x.status === 'MET').length / c.checklist.length) * 100) + '%' : '—'), { num: 1 })],
       summary: rows => [['Case', rows.length], ['Wajib terpenuhi semua', rows.filter(c => c.checklist.filter(x => x.mandatory).every(x => x.status === 'MET')).length]] },
     { id: 'R-PIC', group: 2, icon: 'user', title: 'Beban kerja PIC', desc: 'Tugas aktif, terlambat, dan on-time rate per staf (BR-031).',
       filters: [],
       rows: () => picRows(),
-      cols: [C('Staf', p => p.u.name), C('Peran', p => p.role), C('Tugas aktif', p => p.active, null, { num: 1 }), C('Terlambat', p => p.overdue, null, { num: 1 }), C('Terhambat', p => p.blocked, null, { num: 1 }), C('Antre verifikasi', p => p.verifyQ, null, { num: 1 }), C('Case aktif', p => p.cases, null, { num: 1 }), C('Task selesai', p => p.done, null, { num: 1 }), C('On-time rate', p => (p.rate == null ? '—' : p.rate + '%'), null, { num: 1, sortValue: p => (p.rate == null ? -1 : p.rate) })],
+      cols: [C('Staf', p => p.u.name), C('Peran', p => p.role), C('Tugas aktif', p => p.active, { num: 1 }), C('Terlambat', p => p.overdue, { num: 1 }), C('Terhambat', p => p.blocked, { num: 1 }), C('Antre verifikasi', p => p.verifyQ, { num: 1 }), C('Case aktif', p => p.cases, { num: 1 }), C('Task selesai', p => p.done, { num: 1 }), C('On-time rate', p => (p.rate == null ? '—' : p.rate + '%'), { num: 1, sortValue: p => (p.rate == null ? -1 : p.rate) })],
       summary: rows => [['Staf', rows.length], ['Total tugas aktif', rows.reduce((a, p) => a + p.active, 0)], ['Total terlambat', rows.reduce((a, p) => a + p.overdue, 0)]] },
     { id: 'R-OVD', group: 2, icon: 'alert', title: 'Terlambat & terhambat', desc: 'Semua tugas aktif yang lewat jatuh tempo atau sedang terhambat.',
       filters: [{ key: 'kind', label: 'Kondisi', options: () => [['LATE', 'Terlambat'], ['BLOCKED', 'Terhambat']] }, FX.country],
       rows: f => D.tasks.filter(t => actionable(t) && (overdue(t) || t.status === 'BLOCKED')).filter(t => (!f.kind || (f.kind === 'LATE' ? overdue(t) : t.status === 'BLOCKED')) && (!f.country || (D.case(t.caseId) || {}).country === f.country)),
-      cols: [C('Tugas', t => t.id), C('Langkah', t => t.title), C('Case', t => t.caseId), C('Worker', t => wname((D.case(t.caseId) || {}).workerId)), C('Negara', t => D.cn((D.case(t.caseId) || {}).country)), C('PIC', t => uname(t.assigneeId)), C('Jatuh tempo', t => fmt.date(taskDue(t)), null, { sortValue: t => +taskDue(t) }), C('Terlambat (hari)', t => (overdue(t) ? lateDays(t) : 0), null, { num: 1 }), C('Status', t => stLabel('task', t.status)), C('Alasan hambatan', t => t.blockedReason || '—')],
+      cols: [C('Tugas', t => t.id), C('Langkah', t => t.title), C('Case', t => t.caseId), C('Worker', t => wname((D.case(t.caseId) || {}).workerId)), C('Negara', t => D.cn((D.case(t.caseId) || {}).country)), C('PIC', t => uname(t.assigneeId)), C('Jatuh tempo', t => fmt.date(taskDue(t)), { sortValue: t => +taskDue(t) }), C('Terlambat (hari)', t => (overdue(t) ? lateDays(t) : 0), { num: 1 }), C('Status', t => stLabel('task', t.status)), C('Alasan hambatan', t => t.blockedReason || '—')],
       summary: rows => [['Tugas', rows.length], ['Terlambat', rows.filter(overdue).length], ['Terhambat', rows.filter(t => t.status === 'BLOCKED').length]] },
 
     { id: 'R-BTL', group: 3, icon: 'git-branch', title: 'Bottleneck per langkah', desc: 'Langkah mana yang paling sering terlambat atau terhambat.', filters: [], rows: () => bottleneckRows(),
-      cols: [C('Langkah', m => m.name), C('Sedang aktif', m => m.active, null, { num: 1 }), C('Terlambat', m => m.overdue, null, { num: 1 }), C('Rata-rata hari terlambat', m => (m.overdue ? r1(m.avgLate) : 0), null, { num: 1 }), C('Terhambat', m => m.blocked, null, { num: 1 }), C('Selesai', m => m.done, null, { num: 1 }), C('Tepat waktu', m => (m.onTimePct == null ? '—' : m.onTimePct + '%'), null, { num: 1 })],
+      cols: [C('Langkah', m => m.name), C('Sedang aktif', m => m.active, { num: 1 }), C('Terlambat', m => m.overdue, { num: 1 }), C('Rata-rata hari terlambat', m => (m.overdue ? r1(m.avgLate) : 0), { num: 1 }), C('Terhambat', m => m.blocked, { num: 1 }), C('Selesai', m => m.done, { num: 1 }), C('Tepat waktu', m => (m.onTimePct == null ? '—' : m.onTimePct + '%'), { num: 1 })],
       summary: rows => [['Langkah', rows.length], ['Total terlambat', rows.reduce((a, m) => a + m.overdue, 0)]] },
     { id: 'R-DUR', group: 3, icon: 'clock', title: 'Durasi per negara & profesi', desc: 'Registrasi → berangkat (KPI-07) dan umur case berjalan.', filters: [],
       rows: () => [...durationRows('country').map(r => Object.assign({ dim: 'Negara' }, r)), ...durationRows('profession').map(r => Object.assign({ dim: 'Profesi' }, r))],
-      cols: [C('Dimensi', r => r.dim), C('Nama', r => r.label), C('Case', r => r.n, null, { num: 1 }), C('Sudah berangkat', r => r.nDep, null, { num: 1 }), C('Durasi registrasi → berangkat (hari)', r => (r.avgDep == null ? '—' : r.avgDep), null, { num: 1 }), C('Umur case berjalan (hari)', r => (r.avgRun == null ? '—' : r.avgRun), null, { num: 1 })],
+      cols: [C('Dimensi', r => r.dim), C('Nama', r => r.label), C('Case', r => r.n, { num: 1 }), C('Sudah berangkat', r => r.nDep, { num: 1 }), C('Durasi registrasi → berangkat (hari)', r => (r.avgDep == null ? '—' : r.avgDep), { num: 1 }), C('Umur case berjalan (hari)', r => (r.avgRun == null ? '—' : r.avgRun), { num: 1 })],
       note: 'Sampel keberangkatan masih kecil; gunakan sebagai indikasi awal.', summary: rows => [['Baris', rows.length]] },
     { id: 'R-KPI', group: 3, icon: 'trending-up', title: 'Ringkasan 17 KPI', desc: 'KPI BRD §20 dengan baseline, target usulan, dan nilai saat ini.', filters: [], rows: () => kpiRows(),
       cols: [C('KPI', k => k.id), C('Metrik', k => k.m), C('Baseline', k => k.b), C('Target usulan', k => k.t), C('MVP ukur', k => k.mvp), C('Nilai saat ini', k => k.v), C('Status', k => (k.ok == null ? 'Menunggu baseline' : k.ok ? 'Sesuai target' : 'Perlu perhatian'))],
       summary: rows => [['KPI', rows.length], ['Perlu perhatian', rows.filter(k => k.ok === false).length]] },
-    { id: 'R-ACC', group: 3, icon: 'lock', title: 'Log akses data sensitif', desc: 'Pembukaan NIK/paspor, dokumen RESTRICTED, dan ekspor (RUL-021).', dateFilter: 'Tanggal', perm: 'audit.view', filters: [],
-      rows: f => D.audit.filter(a => /reveal|RESTRICTED|ditampilkan|Ekspor|Cetak/i.test(a.action) && inR(a.at, f)),
-      cols: [C('Waktu', a => fmt.dateTime(a.at), null, { sortValue: a => a.at }), C('Pengguna', a => uname(a.userId)), C('Aksi', a => a.action), C('Objek', a => `${a.entityType} ${a.entityId}`), C('Keterangan', a => a.detail || '—'), C('IP', a => a.ip)],
-      summary: rows => [['Catatan', rows.length], ['Pengguna berbeda', new Set(rows.map(a => a.userId)).size]] },
   ];
-  const visibleReports = () => REPORTS.filter(r => r.group <= MVP() && (!r.perm || BGS.can(r.perm)));
+  const visibleReports = () => REPORTS.filter(r => r.group <= MVP());
 
   // ---------- laporan terjadwal (MVP 3) ----------
   const DOW = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -771,31 +757,24 @@
   const schedWhen = s => `${FREQ[s.freq]}${s.freq === 'MINGGUAN' ? ' · ' + s.day : s.freq === 'BULANAN' ? ' · tanggal ' + s.date : ''} · ${s.time}`;
   const repTitle = id => (REPORTS.find(r => r.id === id) || {}).title || id;
 
-  function logExport(rep, rows, fmtName, note) { EXPORTS.unshift({ at: new Date().toISOString(), userId: ME(), report: rep.title, rows, fmt: fmtName, note }); }
+  function logExport(rep, rows, fmtName) { EXPORTS.unshift({ at: new Date().toISOString(), userId: ME(), report: rep.title, rows, fmt: fmtName }); }
   const stamp = () => { const d = NOW(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
 
   function reportPanel(rep, state, onChange) {
     const f = state.f[rep.id] || (state.f[rep.id] = {});
-    const hasSens = rep.cols.some(c => c.sens);
     const canExport = BGS.can('export');
     const host = h('div'); let cur = [];
-    const cell = (c, r) => { const v = c.value(r); if (c.sens) return h('span', { class: 'mono' }, BGS.mask[c.sens](v)); return v == null || v === '' ? '—' : v; };
+    const cell = (c, r) => { const v = c.value(r); return v == null || v === '' ? '—' : v; };
     const columns = rep.cols.map((c, i) => ({ key: 'c' + i, label: c.label, sortable: true, align: c.num ? 'right' : undefined, sortValue: r => (c.sortValue ? c.sortValue(r) : c.value(r)), render: r => cell(c, r) }));
-    const fullCheck = h('input', { type: 'checkbox', id: 'rp_full' });
-    const exportCols = full => rep.cols.map(c => ({ label: c.label, value: r => { const v = c.value(r); return c.sens && !full ? BGS.mask[c.sens](v) : v == null ? '' : v; } }));
-    const doExport = async () => {
+    const exportCols = rep.cols.map(c => ({ label: c.label, value: r => { const v = c.value(r); return v == null ? '' : v; } }));
+    const doExport = () => {
       if (!canExport) return;
       if (!cur.length) { ui.toast('Tidak ada data untuk diekspor. Ubah filter dulu.', 'warn'); return; }
-      let full = false;
-      if (hasSens && fullCheck.checked && BGS.can('pii.reveal')) {
-        const why = await ui.reasonPrompt({ title: 'Ekspor dengan data sensitif lengkap', message: 'NIK, paspor, dan telepon akan ikut diekspor tanpa disamarkan. Tindakan ini tercatat di audit (BR-009, RUL-021).', label: 'Alasan ekspor data lengkap', confirmLabel: 'Ekspor', presets: ['Laporan resmi ke instansi', 'Pemeriksaan internal'] });
-        if (!why) return; full = true; BGS.audit('Ekspor data sensitif lengkap', 'Laporan', rep.id, `Alasan: ${why}`);
-      }
-      BGS.exportCsv(cur, exportCols(full), `${rep.id.toLowerCase()}-${stamp()}.csv`);
-      logExport(rep, cur.length, 'CSV', full ? 'Data sensitif LENGKAP' : hasSens ? 'Data sensitif disamarkan' : '—');
-      ui.toast(`Ekspor ${rep.title} (${cur.length} baris) diunduh${hasSens && !full ? ' — data sensitif disamarkan' : ''}`);
+      BGS.exportCsv(cur, exportCols, `${rep.id.toLowerCase()}-${stamp()}.csv`);
+      logExport(rep, cur.length, 'CSV');
+      ui.toast(`Ekspor ${rep.title} (${cur.length} baris) diunduh`);
     };
-    const doPrint = () => { BGS.audit('Cetak laporan', 'Laporan', rep.id, `${cur.length} baris (data sensitif disamarkan)`); logExport(rep, cur.length, 'Cetak/PDF', hasSens ? 'Data sensitif disamarkan' : '—'); window.print(); };
+    const doPrint = () => { BGS.audit('Cetak laporan', 'Laporan', rep.id, `${cur.length} baris`); logExport(rep, cur.length, 'Cetak/PDF'); window.print(); };
 
     const fields = [];
     rep.filters.forEach(fl => { const fld = ui.field({ name: `${rep.id}_${fl.key}`, label: fl.label, type: 'select', value: f[fl.key] || '', options: [['', 'Semua'], ...fl.options()] }); fld.input.addEventListener('change', e => { f[fl.key] = e.target.value; draw(); }); fields.push(fld); });
@@ -808,7 +787,6 @@
       const sum = (rep.summary ? rep.summary(cur) : [['Jumlah baris', cur.length]]);
       host.appendChild(h('div', { class: 'rp-sum rp-noprint' }, sum.map(([l, v]) => h('span', null, l + ': ', h('b', null, num(v)))), h('span', { class: 'muted' }, `Pratinjau langsung · ${cur.length} baris`)));
       const notes = [];
-      if (hasSens) notes.push(ui.callout('warn', 'Data sensitif disamarkan', `Kolom ${rep.cols.filter(c => c.sens).map(c => c.label).join(', ')} ditampilkan ter-mask dan diekspor ter-mask secara default (BR-009).${BGS.can('pii.reveal') && canExport ? ' Anda dapat mencentang "sertakan data lengkap" saat ekspor — wajib alasan dan tercatat di audit.' : ' Peran Anda tidak dapat membuka data lengkap.'}`));
       if (rep.disclaimer) notes.push(ui.disclaimer());
       if (rep.note) notes.push(ui.callout('info', null, rep.note));
       if (notes.length) host.appendChild(h('div', { class: 'stack-sm rp-noprint', style: 'padding:12px 16px 0' }, notes));
@@ -818,15 +796,14 @@
     }
     draw();
     const exportBox = h('div', { class: 'row wrap gap-sm' },
-      hasSens && canExport && BGS.can('pii.reveal') ? h('label', { class: 'row gap-sm sm', style: 'font-weight:600' }, fullCheck, 'Sertakan data sensitif lengkap') : null,
       ui.btn('Ekspor Excel (CSV)', { icon: 'download', kind: 'primary', sm: true, disabled: !canExport, title: canExport ? 'Unduh sebagai CSV yang bisa dibuka di Excel' : 'Peran Viewer tidak boleh mengekspor data (BR-027)', onClick: doExport }),
       ui.btn('Cetak / PDF', { icon: 'printer', sm: true, onClick: doPrint }));
     return h('div', null,
-      h('div', { class: 'rp-printhead' }, h('h2', null, `BGS Workforce Management — ${rep.title}`), h('div', { class: 'muted sm' }, `Dicetak ${fmt.dateTime(NOW())} oleh ${BGS.user().name} (${BGS.roles[BGS.role()]})${hasSens ? ' · Data sensitif disamarkan' : ''}`)),
+      h('div', { class: 'rp-printhead' }, h('h2', null, `BGS Workforce Management — ${rep.title}`), h('div', { class: 'muted sm' }, `Dicetak ${fmt.dateTime(NOW())} oleh ${BGS.user().name} (${BGS.roles[BGS.role()]})`)),
       ui.card({ title: rep.title, subtitle: rep.desc, icon: rep.icon, actions: exportBox, flush: true,
         body: h('div', null,
           fields.length ? h('div', { class: 'rp-filters rp-noprint' }, fields) : null,
-          !canExport ? h('div', { style: 'padding:10px 16px 0' }, ui.callout('info', 'Ekspor dinonaktifkan untuk Viewer', 'Viewer hanya dapat melihat pratinjau dan mencetak. Data sensitif tetap disamarkan (BR-027).')) : null,
+          !canExport ? h('div', { style: 'padding:10px 16px 0' }, ui.callout('info', 'Ekspor dinonaktifkan untuk Viewer', 'Viewer hanya dapat melihat pratinjau dan mencetak (BR-027).')) : null,
           host) }));
   }
 
@@ -849,14 +826,13 @@
 
   function tabHistory() {
     const rows = EXPORTS.slice();
-    return ui.card({ title: 'Riwayat ekspor & cetak', subtitle: 'Tercatat di memori sesi ini dan di audit trail (RUL-021). Termasuk ekspor yang Anda lakukan sekarang.', icon: 'clock', flush: true,
+    return ui.card({ title: 'Riwayat ekspor & cetak', subtitle: 'Tercatat di memori sesi ini. Termasuk ekspor yang Anda lakukan sekarang.', icon: 'clock', flush: true,
       body: ui.table({ rows, pageSize: 10, empty: ui.emptyState({ icon: 'download', title: 'Belum ada ekspor', text: 'Ekspor atau cetak laporan dari tab Katalog; riwayatnya muncul di sini.' }), columns: [
         { key: 'at', label: 'Waktu', render: e => fmt.dateTime(e.at) },
         { key: 'u', label: 'Pengguna', render: e => ui.userChip(e.userId) },
         { key: 'report', label: 'Laporan', render: e => h('b', null, e.report) },
         { key: 'fmt', label: 'Format', render: e => ui.badge(e.fmt, e.fmt === 'CSV' ? 'green' : 'blue') },
         { key: 'rows', label: 'Baris', align: 'right' },
-        { key: 'note', label: 'Catatan', render: e => (/LENGKAP/.test(e.note) ? ui.badge(e.note, 'red') : h('span', { class: 'muted' }, e.note)) },
       ] }) });
   }
 
@@ -884,7 +860,7 @@
     function runNow(s) {
       const rep = REPORTS.find(r => r.id === s.reportId); const n = rep ? rep.rows({}).length : 0;
       s.last = new Date().toISOString();
-      EXPORTS.unshift({ at: s.last, userId: ME(), report: repTitle(s.reportId), rows: n, fmt: `Terjadwal · ${s.fmt}`, note: 'Data sensitif disamarkan' });
+      EXPORTS.unshift({ at: s.last, userId: ME(), report: repTitle(s.reportId), rows: n, fmt: `Terjadwal · ${s.fmt}` });
       s.recipients.forEach(id => BGS.notify(id, `Laporan terjadwal "${repTitle(s.reportId)}" siap (${n} baris)`, `#/reports?r=${s.reportId}`, 'INFO'));
       BGS.audit('Laporan terjadwal dijalankan', 'Jadwal laporan', s.id, `${repTitle(s.reportId)} → ${s.recipients.map(uname).join(', ')}`);
       BGS.redrawTop && BGS.redrawTop(); draw(); ui.toast(`Laporan dibuat dan dikirim ke ${s.recipients.length} penerima (notifikasi dalam aplikasi)`);
@@ -918,7 +894,7 @@
 
   BGS.router.add('/reports', { title: 'Laporan & ekspor', roles: ['superadmin', 'director', 'admin', 'viewer'], mvp: 1, render(ctx) {
     const state = { sel: ctx.query.r || null, f: {} };
-    const hd = ui.pageHeader({ title: 'Laporan & ekspor', subtitle: 'Pilih laporan, beri filter, lihat pratinjau langsung, lalu ekspor ke Excel atau cetak. Data sensitif selalu disamarkan secara default.' });
+    const hd = ui.pageHeader({ title: 'Laporan & ekspor', subtitle: 'Pilih laporan, beri filter, lihat pratinjau langsung, lalu ekspor ke Excel atau cetak.' });
     hd.classList.add('rp-noprint'); ctx.el.appendChild(hd);
     const tabs = [{ id: 'cat', label: 'Katalog laporan', count: visibleReports().length, render: () => tabCatalog(ctx, state) }, { id: 'hist', label: 'Riwayat ekspor', count: EXPORTS.length, render: tabHistory }];
     if (MVP() >= 3) tabs.push({ id: 'sch', label: 'Laporan terjadwal', count: SCHEDULES.length, render: tabSchedules });
@@ -947,7 +923,7 @@
       if (mgmt) { const esc = D.tasks.filter(t => actionable(t) && overdue(t) && lateDays(t) > P.auto.overdueDays); if (esc.length) add('ESCALATION', `Eskalasi: ${esc.length} tugas terlambat lebih dari ${P.auto.overdueDays} hari belum selesai`, '#/monitor'); }
     }
     if (P.auto.dueSoon) D.tasks.filter(t => t.assigneeId === ME() && actionable(t) && !overdue(t) && (taskDue(t) - NOW()) / DAY <= 1).slice(0, 5).forEach(t => add('TASK_ASSIGNED', `Pengingat: "${t.title}" (${t.caseId}) jatuh tempo ≤ 1 hari`, '#/cases/' + t.caseId));
-    if (P.auto.docExpiry && BGS.can('document.restricted.view')) {
+    if (P.auto.docExpiry) {
       const n = D.documents.filter(d => d.status !== 'SUPERSEDED' && d.expiresAt && dayDiff(d.expiresAt, NOW()) >= 0 && dayDiff(d.expiresAt, NOW()) <= D.settings.expiryWarningDays).length;
       if (n) add('DOC_EXPIRY', `${n} dokumen akan kedaluwarsa dalam ${D.settings.expiryWarningDays} hari`, '#/documents');
     }
@@ -1009,7 +985,7 @@
         sw('Tugas terlambat + eskalasi', `Beri tahu PIC; setelah lewat batas di bawah, eskalasi ke Admin/Director.`, P.auto.overdue, v => { P.auto.overdue = v; save(); }),
         h('label', { class: 'field', style: 'padding:6px 0 10px' }, h('span', { class: 'hint' }, 'Eskalasi setelah terlambat (hari)'), h('select', { class: 'input', onChange: e => { P.auto.overdueDays = +e.target.value; save(); } }, [1, 2, 3, 5].map(n => h('option', { value: n, selected: P.auto.overdueDays === n }, `${n} hari`)))),
         sw('Tugas jatuh tempo besok', 'Pengingat H-1 untuk tugas yang Anda kerjakan.', P.auto.dueSoon, v => { P.auto.dueSoon = v; save(); }),
-        sw('Dokumen akan kedaluwarsa', `Peringatan ${D.settings.expiryWarningDays} hari sebelum masa berlaku habis (diatur Superadmin di Pengaturan).`, P.auto.docExpiry, v => { P.auto.docExpiry = v; save(); }, !BGS.can('document.restricted.view')),
+        sw('Dokumen akan kedaluwarsa', `Peringatan ${D.settings.expiryWarningDays} hari sebelum masa berlaku habis (diatur Superadmin di Pengaturan).`, P.auto.docExpiry, v => { P.auto.docExpiry = v; save(); }),
         sw('Kuota menipis', 'Beri tahu saat sisa kuota Placement Code di bawah ambang.', P.auto.quota, v => { P.auto.quota = v; save(); }, !['superadmin', 'director', 'admin'].includes(BGS.role())),
         h('label', { class: 'field', style: 'padding:6px 0 10px' }, h('span', { class: 'hint' }, 'Ambang kuota menipis (% tersedia)'), h('select', { class: 'input', onChange: e => { P.auto.quotaPct = +e.target.value; save(); } }, [10, 20, 30, 50].map(n => h('option', { value: n, selected: P.auto.quotaPct === n }, `≤ ${n}%`)))),
         ui.btn('Jalankan pengingat otomatis sekarang', { icon: 'play', onClick: () => { const made = runReminders(P); syncTop(); draw(); ui.toast(made.length ? `${made.length} pengingat baru dibuat` : 'Tidak ada pengingat baru — semua kondisi aman atau sudah pernah diingatkan', made.length ? 'good' : 'info'); } }),

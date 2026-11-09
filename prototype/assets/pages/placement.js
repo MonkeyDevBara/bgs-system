@@ -145,18 +145,17 @@
       const form = row => formModal({
         title: row ? 'Ubah jenis dokumen' : 'Tambah jenis dokumen', cols: 2, fields: [
           { name: 'name', label: 'Nama dokumen', required: true, value: row && row.name, span: 2 },
-          { name: 'sensitivity', label: 'Tingkat sensitivitas', type: 'select', options: [['INTERNAL', 'Internal'], ['CONFIDENTIAL', 'Rahasia'], ['RESTRICTED', 'RESTRICTED (akses dibatasi & tercatat)']], value: row ? row.sensitivity : 'INTERNAL', hint: 'RUL-020/021: dokumen RESTRICTED disamarkan dan akses dicatat di audit' },
           { name: 'validMonths', label: 'Masa berlaku (bulan, 0 = tanpa batas)', type: 'number', value: row ? row.validMonths : 0 },
           { name: 'required', label: 'Wajib secara umum (bawaan)', type: 'checkbox', value: row ? row.required : true }],
         onSubmit: v => {
           const vm = Math.max(0, parseInt(v.validMonths || 0, 10) || 0);
-          if (row) { Object.assign(row, { name: v.name.trim(), sensitivity: v.sensitivity, validMonths: vm, required: !!v.required }); BGS.audit('Jenis dokumen diubah', 'Data master', row.id, row.name); }
-          else { const id = nextId('DT', D.docTypes, 2); D.docTypes.push({ id, name: v.name.trim(), sensitivity: v.sensitivity, required: !!v.required, validMonths: vm }); BGS.audit('Jenis dokumen ditambahkan', 'Data master', id, v.name); }
+          if (row) { Object.assign(row, { name: v.name.trim(), validMonths: vm, required: !!v.required }); BGS.audit('Jenis dokumen diubah', 'Data master', row.id, row.name); }
+          else { const id = nextId('DT', D.docTypes, 2); D.docTypes.push({ id, name: v.name.trim(), required: !!v.required, validMonths: vm }); BGS.audit('Jenis dokumen ditambahkan', 'Data master', id, v.name); }
           ui.toast('Jenis dokumen disimpan'); redraw();
         },
       });
       return h('div', null, bar(add('Tambah jenis dokumen', () => form())), ui.table({ pageSize: 20, columns: [
-        { label: 'ID', render: r => h('span', { class: 'mono' }, r.id) }, { label: 'Dokumen', render: r => r.name }, { label: 'Sensitivitas', render: r => ui.status('sensitivity', r.sensitivity) },
+        { label: 'ID', render: r => h('span', { class: 'mono' }, r.id) }, { label: 'Dokumen', render: r => r.name },
         { label: 'Wajib (bawaan)', render: r => r.required ? ui.badge('Wajib', 'green') : ui.badge('Opsional', 'gray') }, { label: 'Masa berlaku', render: r => r.validMonths ? `${r.validMonths} bulan` : 'Tanpa batas' },
         { label: 'Status', render: activeBadge }, { label: 'Aksi', render: r => actCell(() => form(r), async () => { if (await toggleActive(r, 'Jenis dokumen ' + r.name, 0, r.id)) redraw(); }, r) }], rows: D.docTypes }));
     }
@@ -168,7 +167,7 @@
       const key = `${st.c}|${st.p}`; const label = `${st.c === '*' ? 'Semua negara' : D.cn(st.c)} · ${st.p === '*' ? 'Semua profesi' : D.pn(st.p)}`;
       const sel = (val, opts, on) => h('select', { class: 'input sel', onChange: e => on(e.target.value) }, opts.map(([v, l]) => h('option', { value: v, selected: v === val }, l)));
       const editor = ui.table({ pageSize: 30, dense: true, columns: [
-        { label: 'Dokumen', render: d => h('span', null, d.name, ' ', ui.status('sensitivity', d.sensitivity)) },
+        { label: 'Dokumen', render: d => d.name },
         { label: 'Berlaku sekarang', render: d => { const r = resolveReq(st.c, st.p, d); return h('div', null, ui.badge(LEVEL[r.level][0], LEVEL[r.level][1]), h('div', { class: 'muted sm' }, srcLabel(r.src, st.c, st.p))); } },
         { label: 'Atur untuk pilihan ini', render: d => { const own = (D.docRequirements[key] || {})[d.id] || ''; if (!canMaster()) return h('span', { class: 'muted sm' }, own ? LEVEL[own][0] : 'Mengikuti aturan lebih umum'); return sel(own, [['', 'Ikuti aturan lebih umum'], ['REQ', 'Wajib'], ['OPT', 'Opsional'], ['NA', 'Tidak perlu']], v => { const o = D.docRequirements[key] = D.docRequirements[key] || {}; if (v) o[d.id] = v; else delete o[d.id]; BGS.audit('Syarat dokumen diubah', 'Data master', key, `${d.name}: ${v || 'ikuti aturan umum'}`); ui.toast('Syarat dokumen disimpan'); draw(); }); } }],
         rows: D.docTypes.filter(d => d.active !== false) });

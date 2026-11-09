@@ -11,7 +11,7 @@ python3 -m http.server 8765
 # buka http://127.0.0.1:8765/register.html (website registrasi publik)
 ```
 
-Login memakai akun demo per peran (Superadmin, Director, Admin, PIC, Viewer). Superadmin/Director/Admin diminta kode 2FA: isi 6 digit apa saja.
+Login memakai akun demo per peran (Superadmin, Director, Admin, PIC, Viewer). Tidak ada 2FA, tidak ada data berstatus RESTRICTED, dan tidak ada fitur AI; data sensitif (NIK, paspor, telepon, dokumen) tampil penuh untuk seluruh tim.
 
 ## Kontrol demo (bar atas)
 - **Peran demo**: ganti peran untuk melihat perbedaan hak akses.

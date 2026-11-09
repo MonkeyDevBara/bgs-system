@@ -155,7 +155,7 @@
         h('ul', {},
           h('li', {}, 'Siapa yang mengolah data: PT Berkah Guna Selaras.'),
           h('li', {}, 'Untuk apa: menghubungi Anda, seleksi awal, dan membuat catatan calon pekerja jika Anda lanjut.'),
-          h('li', {}, 'Siapa yang bisa melihat: hanya petugas BGS yang berwenang. NIK ditampilkan sebagian (disamarkan) dan setiap pembukaan data penuh tercatat.'),
+          h('li', {}, 'Siapa yang bisa melihat: hanya tim petugas BGS.'),
           h('li', {}, 'Berapa lama disimpan: sesuai aturan perusahaan dan hukum; data pendaftaran yang tidak dilanjutkan akan dihapus atau dianonimkan.'),
           h('li', {}, 'Hak Anda: meminta melihat, memperbaiki, atau menghapus data Anda dengan menghubungi BGS.'),
           h('li', {}, 'Data tidak dijual dan tidak dibagikan ke pihak luar tanpa dasar yang sah.')),

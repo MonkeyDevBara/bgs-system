@@ -26,9 +26,7 @@
   // ---- documents: model helpers ----
   const WORKER_TYPES = ['DT01', 'DT02', 'DT03', 'DT04', 'DT05', 'DT06', 'DT07', 'DT08', 'DT09', 'DT10', 'DT13'];
   const CASE_TYPES = D.docTypes.map(t => t.id).filter(id => !WORKER_TYPES.includes(id));
-  const sensOf = d => (D.docType(d.typeId) || {}).sensitivity || 'INTERNAL';
   const typeName = d => (D.docType(d.typeId) || {}).name || d.typeId;
-  const canSeeDoc = d => !(BGS.isRole('viewer') && sensOf(d) === 'RESTRICTED');
   const currentDoc = (ownerType, ownerId, typeId) => D.documents.filter(d => d.ownerType === ownerType && d.ownerId === ownerId && d.typeId === typeId && d.status !== 'SUPERSEDED').sort((a, b) => b.version - a.version)[0] || null;
   const versionsOf = d => D.documents.filter(x => x.ownerType === d.ownerType && x.ownerId === d.ownerId && x.typeId === d.typeId).sort((a, b) => b.version - a.version);
   const ownerWorkerId = d => d.ownerType === 'worker' ? d.ownerId : (D.case(d.ownerId) || {}).workerId;
@@ -39,7 +37,7 @@
       const ws = new Set(BGS.scope.workers().map(w => w.id)), cs = new Set(BGS.scope.cases().map(c => c.id));
       list = list.filter(d => d.ownerType === 'worker' ? ws.has(d.ownerId) : cs.has(d.ownerId));
     }
-    return list.filter(canSeeDoc);
+    return list;
   };
   const daysLeft = d => (d.expiresAt ? BGS.fmt.daysFrom(d.expiresAt) : null);
   const expiryBadge = d => {
@@ -76,15 +74,9 @@
     if (d.uploadedBy && d.uploadedBy !== me()) BGS.notify(d.uploadedBy, `Dokumen ${typeName(d)} (${ownerName(d)}) ditolak: ${r}`, '#/documents?owner=' + d.ownerId, 'WARN');
     ui.toast('Dokumen ditolak. Pengunggah akan diberi tahu.', 'warn'); done && done();
   }
-  async function openDoc(d, done) {
-    const t = D.docType(d.typeId) || { name: d.typeId, sensitivity: 'INTERNAL' };
-    if (!canSeeDoc(d)) { ui.toast('Dokumen RESTRICTED tidak dapat dilihat oleh peran Viewer (BR-009).', 'danger'); return; }
-    if (t.sensitivity === 'RESTRICTED') {
-      if (!BGS.can('document.restricted.view')) { ui.toast('Anda tidak memiliki izin membuka dokumen RESTRICTED.', 'danger'); return; }
-      const r = await ui.reasonPrompt({ title: 'Buka dokumen RESTRICTED', message: `${t.name} adalah dokumen sangat sensitif. Pembukaan tercatat di audit trail (RUL-020/021).`, label: 'Alasan membuka dokumen', presets: ['Verifikasi identitas', 'Pengisian formulir resmi', 'Pemeriksaan dokumen'] });
-      if (!r) return;
-      BGS.audit('Dokumen RESTRICTED dibuka', 'Dokumen', d.id, `${t.name} v${d.version} · pemilik ${d.ownerId} · Alasan: ${r}`);
-    } else BGS.audit('Dokumen dibuka', 'Dokumen', d.id, `${t.name} v${d.version}`);
+  function openDoc(d, done) {
+    const t = D.docType(d.typeId) || { name: d.typeId };
+    BGS.audit('Dokumen dibuka', 'Dokumen', d.id, `${t.name} v${d.version}`);
     const wid = ownerWorkerId(d), w = D.worker(wid) || {};
     const wm = h('div', { class: 'rc-wm', 'aria-hidden': 'true' }, Array.from({ length: 36 }, () => h('span', null, `BGS · ${uname(me())} · ${BGS.fmt.date(BGS.today)} · RAHASIA`)));
     const bar = wd => h('div', { class: 'rc-line', style: `width:${wd}%` });
@@ -95,8 +87,8 @@
           d.typeId === 'DT01' || d.typeId === 'DT02' || d.typeId === 'DT08' ? h('div', { class: 'rc-photo' }, BGS.icon('user', 40)) : null,
           h('div', { class: 'stack-sm', style: 'flex:1' },
             h('div', null, h('span', { class: 'muted xs' }, 'Nama'), h('div', { class: 'b' }, w.name || '—')),
-            d.typeId === 'DT02' ? h('div', null, h('span', { class: 'muted xs' }, 'NIK'), h('div', { class: 'mono' }, BGS.mask.nik(w.nik))) : null,
-            d.typeId === 'DT08' ? h('div', null, h('span', { class: 'muted xs' }, 'No. paspor'), h('div', { class: 'mono' }, BGS.mask.passport(w.passport))) : null,
+            d.typeId === 'DT02' ? h('div', null, h('span', { class: 'muted xs' }, 'NIK'), h('div', { class: 'mono' }, w.nik)) : null,
+            d.typeId === 'DT08' ? h('div', null, h('span', { class: 'muted xs' }, 'No. paspor'), h('div', { class: 'mono' }, w.passport)) : null,
             bar(80), bar(65), bar(72))),
         bar(95), bar(88), bar(92), bar(60), bar(78),
         h('div', { class: 'rc-paper-foot muted xs' }, `${d.filename} · v${d.version}`)));
@@ -104,7 +96,7 @@
     const body = h('div', { class: 'stack' },
       ui.callout('info', 'Tautan aman', 'Tautan berumur pendek (kedaluwarsa dalam 5 menit), berkas dipindai malware dan disimpan terenkripsi (BR-009). Watermark berisi nama Anda dan tanggal akses.'),
       paper,
-      ui.kv([['Jenis', h('span', null, t.name, ' ', ui.status('sensitivity', t.sensitivity))], ['Status', ui.status('document', d.status)], ['Pemilik', ownerCell(d)], ['Diunggah', `${uname(d.uploadedBy)} · ${BGS.fmt.dateTime(d.uploadedAt)}`], ['Diperiksa', d.verifiedBy ? `${uname(d.verifiedBy)} · ${BGS.fmt.dateTime(d.verifiedAt)}` : 'Belum'], d.rejectReason ? ['Alasan penolakan', d.rejectReason] : null, ['Berlaku s/d', d.expiresAt ? h('span', { class: 'row gap-sm' }, BGS.fmt.date(d.expiresAt), expiryBadge(d)) : 'Tanpa masa berlaku'], ['Ukuran', `${BGS.fmt.num(d.sizeKb)} KB`]], 2),
+      ui.kv([['Jenis', t.name], ['Status', ui.status('document', d.status)], ['Pemilik', ownerCell(d)], ['Diunggah', `${uname(d.uploadedBy)} · ${BGS.fmt.dateTime(d.uploadedAt)}`], ['Diperiksa', d.verifiedBy ? `${uname(d.verifiedBy)} · ${BGS.fmt.dateTime(d.verifiedAt)}` : 'Belum'], d.rejectReason ? ['Alasan penolakan', d.rejectReason] : null, ['Berlaku s/d', d.expiresAt ? h('span', { class: 'row gap-sm' }, BGS.fmt.date(d.expiresAt), expiryBadge(d)) : 'Tanpa masa berlaku'], ['Ukuran', `${BGS.fmt.num(d.sizeKb)} KB`]], 2),
       vers.length > 1 ? h('div', null, h('h4', { style: 'margin:0 0 6px' }, 'Riwayat versi (RUL-023)'), versionTable(vers)) : null);
     const m = ui.modal({
       title: `${t.name} · versi ${d.version}`, size: 'lg', body,
@@ -146,13 +138,13 @@
     };
     const fillTypes = () => {
       const ids = oType.value === 'worker' ? WORKER_TYPES : CASE_TYPES;
-      BGS.clear(tSel); tSel.append(...opts(ids.map(id => [id, D.docType(id).name + (D.docType(id).sensitivity === 'RESTRICTED' ? ' (RESTRICTED)' : '')]), typeId));
+      BGS.clear(tSel); tSel.append(...opts(ids.map(id => [id, D.docType(id).name]), typeId));
     };
     const refreshInfo = () => {
       const t = D.docType(tSel.value); BGS.clear(info); if (!t) return;
       const cur = currentDoc(oType.value, oSel.value, t.id);
       if (!exp.dataset.touched) exp.value = t.validMonths && t.id !== 'DT08' ? addMonths(t.validMonths) : exp.value && t.id === 'DT08' ? exp.value : '';
-      info.append(cur ? ui.callout('warn', `Sudah ada ${t.name} v${cur.version} (${BGS.ST.document[cur.status][0]})`, `Dokumen baru akan menjadi versi ${Math.max(...versionsOf(cur).map(v => v.version)) + 1}. Versi lama otomatis ditandai "Digantikan" dan tetap tersimpan (RUL-023).`) : ui.callout('info', null, `Belum ada ${t.name} untuk pemilik ini. Dokumen akan menjadi versi 1.`), t.sensitivity === 'RESTRICTED' ? h('div', { class: 'hint', style: 'margin-top:6px' }, 'Dokumen RESTRICTED: akses hanya untuk peran berizin dan setiap pembukaan dicatat (BR-009).') : null);
+      info.append(cur ? ui.callout('warn', `Sudah ada ${t.name} v${cur.version} (${BGS.ST.document[cur.status][0]})`, `Dokumen baru akan menjadi versi ${Math.max(...versionsOf(cur).map(v => v.version)) + 1}. Versi lama otomatis ditandai "Digantikan" dan tetap tersimpan (RUL-023).`) : ui.callout('info', null, `Belum ada ${t.name} untuk pemilik ini. Dokumen akan menjadi versi 1.`));
     };
     exp.addEventListener('input', () => { exp.dataset.touched = '1'; });
     oType.addEventListener('change', () => { ownerId = null; fillOwners(); fillTypes(); refreshInfo(); });
@@ -409,14 +401,13 @@
             h('div', { style: 'margin-top:6px' }, rows.map(({ t, d }) => {
               const cls = !d ? 'none' : d.status === 'VERIFIED' ? 'ok' : ['REJECTED', 'EXPIRED'].includes(d.status) ? 'bad' : 'wait';
               const icn = cls === 'ok' ? 'check-circle' : cls === 'bad' ? 'x-circle' : cls === 'wait' ? 'clock' : 'file';
-              const hidden = d && !canSeeDoc(d);
               const mine = d && d.status === 'UPLOADED' && D.settings.uploaderCannotVerify && d.uploadedBy === me();
               return h('div', { class: 'rc-chk' }, h('span', { class: `rc-ic ${cls}` }, BGS.icon(icn, 20)),
-                h('div', null, h('div', { class: 'row wrap gap-sm' }, h('b', null, t.name), t.required ? ui.badge('Wajib', 'blue') : ui.badge('Opsional', 'gray'), ui.status('sensitivity', t.sensitivity)),
-                  d ? h('div', { class: 'sm muted' }, hidden ? 'Berkas disembunyikan untuk peran Viewer (BR-009)' : [h('span', { class: 'mono' }, d.filename), ` · v${d.version} · ${uname(d.uploadedBy)}, ${BGS.fmt.rel(d.uploadedAt)}`], mine ? h('span', { style: 'color:#B45309' }, ' · diunggah oleh Anda') : null) : h('div', { class: 'sm muted' }, 'Belum diunggah'),
+                h('div', null, h('div', { class: 'row wrap gap-sm' }, h('b', null, t.name), t.required ? ui.badge('Wajib', 'blue') : ui.badge('Opsional', 'gray')),
+                  d ? h('div', { class: 'sm muted' }, [h('span', { class: 'mono' }, d.filename), ` · v${d.version} · ${uname(d.uploadedBy)}, ${BGS.fmt.rel(d.uploadedAt)}`], mine ? h('span', { style: 'color:#B45309' }, ' · diunggah oleh Anda') : null) : h('div', { class: 'sm muted' }, 'Belum diunggah'),
                   d && d.status === 'REJECTED' ? h('div', { class: 'sm', style: 'color:#B91C1C' }, 'Ditolak: ' + d.rejectReason) : null),
                 h('div', { class: 'rc-acts' }, d ? ui.status('document', d.status) : null,
-                  d && !hidden ? ui.btn('Lihat', { sm: true, icon: 'eye', onClick: () => openDoc(d, redraw) }) : null,
+                  d ? ui.btn('Lihat', { sm: true, icon: 'eye', onClick: () => openDoc(d, redraw) }) : null,
                   d && d.status === 'UPLOADED' && editable && BGS.can('document.verify') ? [ui.btn('Verifikasi', { sm: true, kind: 'good', icon: 'check', onClick: () => verifyDoc(d, redraw) }), ui.btn('Tolak', { sm: true, kind: 'danger', icon: 'x', onClick: () => rejectDoc(d, redraw) })] : null,
                   editable && BGS.can('document.upload') && (!d || ['REJECTED', 'EXPIRED'].includes(d.status)) ? ui.btn(d ? 'Unggah ulang' : 'Unggah', { sm: true, icon: 'upload', onClick: () => uploadDialog({ ownerType: 'worker', ownerId: a.workerId, typeId: t.id, onDone: redraw }) }) : null));
             })));
@@ -553,7 +544,6 @@
       const docCols = (extra) => [
         { key: 'filename', label: 'Dokumen', render: d => h('div', null, h('b', null, typeName(d)), h('div', { class: 'muted xs mono' }, `${d.filename} · v${d.version}`)) },
         { key: 'ownerId', label: 'Pemilik', render: ownerCell },
-        { key: 'sens', label: 'Sensitivitas', render: d => ui.status('sensitivity', sensOf(d)) },
         { key: 'status', label: 'Status', render: d => h('div', null, ui.status('document', d.status), d.rejectReason ? h('div', { class: 'muted xs', style: 'max-width:180px' }, d.rejectReason) : null) },
         { key: 'uploadedAt', label: 'Diunggah', sortable: true, sortValue: d => d.uploadedAt, render: d => h('div', null, uname(d.uploadedBy), h('div', { class: 'muted xs' }, BGS.fmt.rel(d.uploadedAt))) },
         ...(extra || []),
@@ -576,8 +566,7 @@
           root.appendChild(h('div', { class: 'callout c-info' }, BGS.icon('filter', 18), h('div', { class: 'rc-banner' }, h('span', null, 'Menampilkan dokumen milik ', h('b', null, w ? w.name : c ? `${c.id} (${ownerName({ ownerType: 'case', ownerId: c.id })})` : owner), w || c ? ' dan dokumen case terkait.' : '.'), ui.btn('Hapus filter', { sm: true, onClick: () => ctx.go('/documents') }))));
         }
         if (BGS.scope.isLimited()) root.appendChild(ui.callout('info', 'Cakupan data Anda', 'PIC hanya melihat dokumen milik worker dan case yang ditugaskan (RUL-020).'));
-        if (BGS.isRole('viewer')) root.appendChild(ui.callout('info', null, 'Peran Viewer hanya dapat melihat dokumen. Dokumen RESTRICTED (KTP, KK, paspor, MCU, psikologi) disembunyikan (BR-009).'));
-        else if (BGS.can('document.restricted.view')) root.appendChild(ui.callout('warn', 'Dokumen RESTRICTED', 'Membuka dokumen RESTRICTED (KTP, KK, paspor, MCU) wajib menyertakan alasan dan tercatat di audit (BR-009, RUL-021).'));
+        if (BGS.isRole('viewer')) root.appendChild(ui.callout('info', null, 'Peran Viewer hanya dapat melihat dokumen.'));
 
         const all = base();
         const queue = all.filter(d => d.status === 'UPLOADED').sort((x, y) => x.uploadedAt.localeCompare(y.uploadedAt));
@@ -595,7 +584,6 @@
             filters: [
               { key: 'typeId', label: 'Jenis', options: D.docTypes.map(t => [t.id, t.name]) },
               { key: 'status', label: 'Status', options: Object.entries(BGS.ST.document).map(([k, v]) => [k, v[0]]) },
-              { key: 'sens', label: 'Sensitivitas', options: Object.entries(BGS.ST.sensitivity).filter(([k]) => !(k === 'RESTRICTED' && BGS.isRole('viewer'))).map(([k, v]) => [k, v[0]]), match: (d, v) => sensOf(d) === v },
               { key: 'ownerType', label: 'Pemilik', options: [['worker', 'Worker'], ['case', 'Placement Case']] },
             ],
             columns: [...docCols([{ key: 'expiresAt', label: 'Berlaku s/d', render: d => d.expiresAt ? h('div', null, BGS.fmt.date(d.expiresAt), h('div', null, expiryBadge(d))) : h('span', { class: 'muted' }, '—') }]), { key: 'act', label: 'Aksi', render: actions }],
@@ -613,7 +601,6 @@
             ui.card({ flush: true, body: ui.table({ rows: D.docTypes, pageSize: 20, columns: [
               { key: 'name', label: 'Jenis dokumen', render: t => h('b', null, t.name) },
               { key: 'lvl', label: 'Dimiliki oleh', render: t => CASE_TYPES.includes(t.id) ? 'Placement Case' : 'Worker' },
-              { key: 'sensitivity', label: 'Sensitivitas', render: t => ui.status('sensitivity', t.sensitivity) },
               { key: 'required', label: 'Wajib?', render: t => t.required ? ui.badge('Wajib', 'blue') : ui.badge('Opsional', 'gray') },
               { key: 'validMonths', label: 'Masa berlaku', render: t => t.validMonths ? `${t.validMonths} bulan` : 'Tanpa batas' },
               { key: 'n', label: 'Dokumen aktif', render: t => D.documents.filter(d => d.typeId === t.id && d.status !== 'SUPERSEDED').length },

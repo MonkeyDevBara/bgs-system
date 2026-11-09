@@ -32,33 +32,32 @@
     { id: 'RT-G2G', name: 'Government-to-Government (G-to-G)', countries: ['KR', 'JP'] },
     { id: 'RT-MANDIRI', name: 'Mandiri (dengan pendampingan)', countries: ['TW'] },
   ];
-  // sensitivity: INTERNAL | CONFIDENTIAL | RESTRICTED (RUL-020)
   D.docTypes = [
-    ['DT01', 'Pas foto', 'INTERNAL', true, 0], ['DT02', 'KTP', 'RESTRICTED', true, 0], ['DT03', 'Kartu Keluarga (KK)', 'RESTRICTED', true, 0],
-    ['DT04', 'Akta lahir', 'CONFIDENTIAL', true, 0], ['DT05', 'Ijazah', 'CONFIDENTIAL', true, 0], ['DT06', 'Buku nikah / akta cerai', 'CONFIDENTIAL', false, 0],
-    ['DT07', 'Surat izin keluarga / wali', 'CONFIDENTIAL', true, 0], ['DT08', 'Paspor', 'RESTRICTED', true, 60], ['DT09', 'Sertifikat kompetensi', 'INTERNAL', false, 0],
-    ['DT10', 'Sertifikat bahasa', 'INTERNAL', false, 0], ['DT11', 'Hasil MCU', 'RESTRICTED', true, 6], ['DT12', 'Hasil psikologi', 'RESTRICTED', false, 12],
-    ['DT13', 'Kartu BPJS', 'CONFIDENTIAL', true, 0], ['DT14', 'SKCK', 'CONFIDENTIAL', true, 6], ['DT15', 'Perjanjian Penempatan', 'CONFIDENTIAL', true, 0],
-    ['DT16', 'Perjanjian Kerja', 'CONFIDENTIAL', true, 0], ['DT17', 'Visa', 'CONFIDENTIAL', true, 12], ['DT18', 'Tiket', 'INTERNAL', true, 0],
-  ].map(([id, name, sensitivity, required, validMonths]) => ({ id, name, sensitivity, required, validMonths }));
+    ['DT01', 'Pas foto', true, 0], ['DT02', 'KTP', true, 0], ['DT03', 'Kartu Keluarga (KK)', true, 0],
+    ['DT04', 'Akta lahir', true, 0], ['DT05', 'Ijazah', true, 0], ['DT06', 'Buku nikah / akta cerai', false, 0],
+    ['DT07', 'Surat izin keluarga / wali', true, 0], ['DT08', 'Paspor', true, 60], ['DT09', 'Sertifikat kompetensi', false, 0],
+    ['DT10', 'Sertifikat bahasa', false, 0], ['DT11', 'Hasil MCU', true, 6], ['DT12', 'Hasil psikologi', false, 12],
+    ['DT13', 'Kartu BPJS', true, 0], ['DT14', 'SKCK', true, 6], ['DT15', 'Perjanjian Penempatan', true, 0],
+    ['DT16', 'Perjanjian Kerja', true, 0], ['DT17', 'Visa', true, 12], ['DT18', 'Tiket', true, 0],
+  ].map(([id, name, required, validMonths]) => ({ id, name, required, validMonths }));
   D.cn = c => (D.countries.find(x => x.code === c) || {}).name || c;
   D.pn = c => (D.professions.find(x => x.code === c) || {}).name || c;
 
   // ---------- staff users (the 5 baseline roles; roles can be combined: A-04) ----------
   D.users = [
-    { id: 'U01', name: 'Rina Wulandari', roles: ['superadmin'], email: 'rina@bgs.example', twofa: true, active: true, last: '2026-11-06T08:41' },
-    { id: 'U02', name: 'Teguh Prasetyo', roles: ['superadmin'], email: 'teguh@bgs.example', twofa: true, active: true, last: '2026-11-05T16:20' },
-    { id: 'U03', name: 'Muhamad Rizal', roles: ['director'], email: 'rizal@bgs.example', twofa: true, active: true, last: '2026-11-06T07:55' },
-    { id: 'U04', name: 'Dewi Kartika', roles: ['admin'], email: 'dewi@bgs.example', twofa: true, active: true, last: '2026-11-06T08:30' },
-    { id: 'U05', name: 'Sari Rahmawati', roles: ['admin'], email: 'sari@bgs.example', twofa: true, active: true, last: '2026-11-06T08:02' },
-    { id: 'U06', name: 'Andi Firmansyah', roles: ['admin', 'pic'], email: 'andi@bgs.example', twofa: true, active: true, last: '2026-11-05T17:10' },
-    { id: 'U07', name: 'Bagus Santoso', roles: ['pic'], picRole: 'PIC Dokumen', email: 'bagus@bgs.example', twofa: false, active: true, last: '2026-11-06T08:15' },
-    { id: 'U08', name: 'Maya Anggraini', roles: ['pic'], picRole: 'PIC Medical', email: 'maya@bgs.example', twofa: false, active: true, last: '2026-11-06T08:50' },
-    { id: 'U09', name: 'Joko Susilo', roles: ['pic'], picRole: 'PIC Visa', email: 'joko@bgs.example', twofa: false, active: true, last: '2026-11-05T15:45' },
-    { id: 'U10', name: 'Lina Marlina', roles: ['pic'], picRole: 'PIC Keberangkatan', email: 'lina@bgs.example', twofa: false, active: true, last: '2026-11-06T07:40' },
-    { id: 'U11', name: 'Fajar Nugroho', roles: ['pic'], picRole: 'PIC Dokumen', email: 'fajar@bgs.example', twofa: false, active: true, last: '2026-11-04T14:00' },
-    { id: 'U12', name: 'Hendra Gunawan', roles: ['viewer'], email: 'hendra@bgs.example', twofa: false, active: true, last: '2026-11-03T10:30' },
-    { id: 'U13', name: 'Eko Purnomo', roles: ['pic'], picRole: 'PIC Medical', email: 'eko@bgs.example', twofa: false, active: false, last: '2026-08-12T09:00' },
+    { id: 'U01', name: 'Rina Wulandari', roles: ['superadmin'], email: 'rina@bgs.example', active: true, last: '2026-11-06T08:41' },
+    { id: 'U02', name: 'Teguh Prasetyo', roles: ['superadmin'], email: 'teguh@bgs.example', active: true, last: '2026-11-05T16:20' },
+    { id: 'U03', name: 'Muhamad Rizal', roles: ['director'], email: 'rizal@bgs.example', active: true, last: '2026-11-06T07:55' },
+    { id: 'U04', name: 'Dewi Kartika', roles: ['admin'], email: 'dewi@bgs.example', active: true, last: '2026-11-06T08:30' },
+    { id: 'U05', name: 'Sari Rahmawati', roles: ['admin'], email: 'sari@bgs.example', active: true, last: '2026-11-06T08:02' },
+    { id: 'U06', name: 'Andi Firmansyah', roles: ['admin', 'pic'], email: 'andi@bgs.example', active: true, last: '2026-11-05T17:10' },
+    { id: 'U07', name: 'Bagus Santoso', roles: ['pic'], picRole: 'PIC Dokumen', email: 'bagus@bgs.example', active: true, last: '2026-11-06T08:15' },
+    { id: 'U08', name: 'Maya Anggraini', roles: ['pic'], picRole: 'PIC Medical', email: 'maya@bgs.example', active: true, last: '2026-11-06T08:50' },
+    { id: 'U09', name: 'Joko Susilo', roles: ['pic'], picRole: 'PIC Visa', email: 'joko@bgs.example', active: true, last: '2026-11-05T15:45' },
+    { id: 'U10', name: 'Lina Marlina', roles: ['pic'], picRole: 'PIC Keberangkatan', email: 'lina@bgs.example', active: true, last: '2026-11-06T07:40' },
+    { id: 'U11', name: 'Fajar Nugroho', roles: ['pic'], picRole: 'PIC Dokumen', email: 'fajar@bgs.example', active: true, last: '2026-11-04T14:00' },
+    { id: 'U12', name: 'Hendra Gunawan', roles: ['viewer'], email: 'hendra@bgs.example', active: true, last: '2026-11-03T10:30' },
+    { id: 'U13', name: 'Eko Purnomo', roles: ['pic'], picRole: 'PIC Medical', email: 'eko@bgs.example', active: false, last: '2026-08-12T09:00' },
   ];
   D.user = id => D.users.find(u => u.id === id);
   D.demoUserByRole = { superadmin: 'U01', director: 'U03', admin: 'U04', pic: 'U07', viewer: 'U12' };
@@ -402,10 +401,10 @@
     { id: 'N07', to: 'U01', type: 'RULE_CHANGE', text: 'Rujukan regulasi REF-02 menunggu verifikasi hukum', at: iso(addDays(BGS.today, -3)), read: true, link: '#/compliance/library' },
   ];
   D.audit = [];
-  const actions = [['Status lamaran berubah', 'Application'], ['Dokumen diverifikasi', 'Document'], ['Akses dokumen RESTRICTED', 'Document'], ['Kuota dicadangkan', 'Placement Code'], ['PIC ditugaskan', 'Placement Case'], ['Template dipublikasikan', 'Workflow Template'], ['NIK ditampilkan (reveal)', 'Worker'], ['Registrasi diterima', 'Registration'], ['Task selesai', 'Task'], ['Login berhasil', 'User']];
+  const actions = [['Status lamaran berubah', 'Application'], ['Dokumen diverifikasi', 'Document'], ['Dokumen dibuka', 'Document'], ['Kuota dicadangkan', 'Placement Code'], ['PIC ditugaskan', 'Placement Case'], ['Template dipublikasikan', 'Workflow Template'], ['Data worker diubah', 'Worker'], ['Registrasi diterima', 'Registration'], ['Task selesai', 'Task'], ['Login berhasil', 'User']];
   for (let i = 0; i < 60; i++) {
     const [a, e] = actions[i % actions.length]; const u = pick(D.users.filter(x => x.active));
-    D.audit.push({ id: 'AU-' + pad(i + 1, 5), at: iso(addDays(BGS.today, -i * 0.35)), userId: u.id, action: a, entityType: e, entityId: e === 'Worker' ? pick(D.workers).id : e === 'Placement Case' ? pick(D.cases).id : e === 'Document' ? 'DOC-' + pad(int(1, 120), 5) : e === 'Placement Code' ? pick(D.placementCodes).id : '—', detail: a.includes('RESTRICTED') || a.includes('reveal') ? 'Alasan: pemeriksaan kelengkapan dokumen' : '', ip: '10.0.0.' + int(10, 80) });
+    D.audit.push({ id: 'AU-' + pad(i + 1, 5), at: iso(addDays(BGS.today, -i * 0.35)), userId: u.id, action: a, entityType: e, entityId: e === 'Worker' ? pick(D.workers).id : e === 'Placement Case' ? pick(D.cases).id : e === 'Document' ? 'DOC-' + pad(int(1, 120), 5) : e === 'Placement Code' ? pick(D.placementCodes).id : '—', detail: '', ip: '10.0.0.' + int(10, 80) });
   }
   D.audit.sort((a, b) => b.at.localeCompare(a.at));
   D.subjectRequests = [

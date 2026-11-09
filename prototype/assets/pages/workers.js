@@ -135,19 +135,18 @@
   const sectionCard = (title, icon, body, subtitle) => ui.card({ title, icon, subtitle, body });
 
   // data comparison (submission/new data vs. existing worker(s)) — duplicate panel
-  const CMP_ROWS = [['Nama', 'name'], ['NIK', 'nik', 'nik'], ['Paspor', 'passport', 'passport'], ['Tanggal lahir', 'dob', 'date'], ['Jenis kelamin', 'gender', 'gender'], ['Telepon', 'phone', 'phone'], ['Kota', 'city', 'city'], ['Pendidikan', 'education']];
-  const cmpVal = (rec, key, kind, entityId) => {
+  const CMP_ROWS = [['Nama', 'name'], ['NIK', 'nik'], ['Paspor', 'passport'], ['Tanggal lahir', 'dob', 'date'], ['Jenis kelamin', 'gender', 'gender'], ['Telepon', 'phone'], ['Kota', 'city', 'city'], ['Pendidikan', 'education']];
+  const cmpVal = (rec, key, kind) => {
     const v = rec[key]; if (v == null || v === '') return '—';
-    if (kind === 'nik' || kind === 'passport' || kind === 'phone') return ui.masked(v, kind, entityId);
     if (kind === 'date') return fmt.date(v); if (kind === 'gender') return genderLabel(v); if (kind === 'city') return stripProv(v); return String(v);
   };
   const cmpNorm = (key, v) => (key === 'nik' || key === 'phone' ? digits(v) : key === 'name' ? normName(v) : key === 'city' ? stripProv(v).toLowerCase() : String(v == null ? '' : v).toLowerCase().trim());
   const IDENT_KEYS = ['name', 'nik', 'passport', 'dob', 'phone'];
-  function compareTable(rec, matches, leftLabel = 'Data baru', leftId = 'baru') {
+  function compareTable(rec, matches, leftLabel = 'Data baru') {
     return h('div', { class: 'tbl-scroll' }, h('table', { class: 'wk-cmp' },
       h('thead', null, h('tr', null, h('th', null, 'Data'), h('th', null, leftLabel), matches.map(m => h('th', null, 'Worker ', h('a', { href: `#/workers/${m.worker.id}` }, m.worker.id))))),
-      h('tbody', null, CMP_ROWS.map(([label, key, kind]) => h('tr', null, h('th', { scope: 'row' }, label), h('td', null, cmpVal(rec, key, kind, leftId)),
-        matches.map(m => { const a = cmpNorm(key, rec[key]), b = cmpNorm(key, m.worker[key]); const same = IDENT_KEYS.includes(key) && a && b && a === b; const diff = a && b && a !== b; return h('td', { class: same ? 'wk-same' : diff ? 'wk-diff' : '' }, cmpVal(m.worker, key, kind, m.worker.id), same && h('span', { class: 'wk-eq' }, 'SAMA')); }))))));
+      h('tbody', null, CMP_ROWS.map(([label, key, kind]) => h('tr', null, h('th', { scope: 'row' }, label), h('td', null, cmpVal(rec, key, kind)),
+        matches.map(m => { const a = cmpNorm(key, rec[key]), b = cmpNorm(key, m.worker[key]); const same = IDENT_KEYS.includes(key) && a && b && a === b; const diff = a && b && a !== b; return h('td', { class: same ? 'wk-same' : diff ? 'wk-diff' : '' }, cmpVal(m.worker, key, kind), same && h('span', { class: 'wk-eq' }, 'SAMA')); }))))));
   }
 
   BGS.addStyle(`
@@ -159,7 +158,7 @@
   .wk-check{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--line)} .wk-check:last-child{border-bottom:0}
   .wk-check .ico{margin-top:2px} .wk-ok .ico{color:var(--green)} .wk-bad .ico{color:var(--red)} .wk-warn .ico{color:var(--amber-d)}
   .wk-actbtn{display:flex;flex-direction:column;gap:3px;align-items:stretch} .wk-actbtn .btn{width:100%} .wk-actbtn .hint{margin-bottom:6px}
-  .wk-lock td{background:#F8FAFC;color:var(--muted)} .wk-drop{border:2px dashed var(--line2);border-radius:12px;padding:30px 20px;text-align:center;background:#F8FAFC;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .wk-drop{border:2px dashed var(--line2);border-radius:12px;padding:30px 20px;text-align:center;background:#F8FAFC;display:flex;flex-direction:column;align-items:center;gap:10px}
   .wk-drop.on{border-color:var(--blue);background:var(--blue-l)} .wk-drop .ico{color:var(--blue)}
   .wk-tips{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:13px} .wk-map-sel{min-width:200px}
   .wk-big{font-size:22px;font-weight:800;line-height:1.1} .wk-pill{display:inline-flex;gap:6px;align-items:center}
@@ -189,7 +188,7 @@
     const draw = () => {
       targetId = sel.value; const w = D.worker(targetId); BGS.clear(cmpHost); BGS.clear(info); if (!w) return;
       const mm = matches.find(m => m.worker.id === w.id) || { worker: w, reasons: [] };
-      cmpHost.appendChild(compareTable(rec, [mm], leftLabel, ref));
+      cmpHost.appendChild(compareTable(rec, [mm], leftLabel));
       const conf = hasApp && activeAppConflict(w.id, rec.country, rec.profession);
       addApp.disabled = !hasApp || !!conf; if (conf) addApp.checked = false;
       info.appendChild(h('div', { class: 'stack-sm' },
@@ -237,7 +236,7 @@
       const cache = new Map(); const ms = r => { if (!cache.has(r.id)) cache.set(r.id, regMatches(r)); return cache.get(r.id); };
       const baseCols = [
         { key: 'name', label: 'Pendaftar', sortable: true, render: r => h('div', null, h('b', null, r.name), h('div', { class: 'muted sm mono' }, r.id)) },
-        { key: 'nik', label: 'NIK', render: r => h('span', { class: 'mono' }, BGS.mask.nik(digits(r.nik))) },
+        { key: 'nik', label: 'NIK', render: r => h('span', { class: 'mono' }, digits(r.nik)) },
         { key: 'country', label: 'Tujuan', render: r => regTarget(r) },
         { key: 'submittedAt', label: 'Masuk', sortable: true, render: r => h('div', null, fmt.dateTime(r.submittedAt), h('div', { class: 'muted sm' }, fmt.rel(r.submittedAt))) },
       ];
@@ -302,7 +301,7 @@
           title: 'Tidak bisa diterima: data sudah ada', size: 'lg',
           body: h('div', { class: 'stack' },
             ui.callout('danger', 'NIK atau paspor sudah terdaftar (RUL-002)', 'Satu orang hanya boleh punya satu Worker ID. Registrasi ini tidak boleh membuat Worker baru. Buka profil yang sudah ada, atau gabungkan data pengajuan ini ke worker tersebut.'),
-            compareTable(reg, nikM, 'Pengajuan ini', reg.id)),
+            compareTable(reg, nikM, 'Pengajuan ini')),
           footer: [ui.btn('Tutup', { onClick: () => m.close() }), ...nikM.slice(0, 2).map(x => h('a', { class: 'btn', href: '#/workers/' + x.worker.id, onClick: () => m.close() }, BGS.icon('user', 16), 'Buka profil ' + x.worker.id)), ui.btn('Gabung ke worker ini', { kind: 'primary', icon: 'merge', onClick: () => { m.close(); openMerge(); } })],
         });
       };
@@ -321,7 +320,7 @@
           title: 'Terima registrasi', size: 'md',
           body: h('div', { class: 'stack' },
             ui.callout('info', 'Yang akan dibuat', h('span', null, 'Worker baru ', h('b', { class: 'mono' }, nextId), ' dan lamaran (status Diajukan) untuk ', h('b', null, regTarget(reg)), '. Tidak ada kuota yang dipakai (RUL-004).')),
-            ui.kv([['Nama', reg.name], ['NIK', BGS.mask.nik(digits(reg.nik))], ['Consent', `${reg.consent.version} · ${fmt.dateTime(reg.consent.at)} · ${reg.consent.channel}`]]),
+            ui.kv([['Nama', reg.name], ['NIK', digits(reg.nik)], ['Consent', `${reg.consent.version} · ${fmt.dateTime(reg.consent.at)} · ${reg.consent.channel}`]]),
             h('div', { class: 'form-grid cols-2' }, k.node('route'), k.node('recruiter'))),
           footer: [ui.btn('Batal', { onClick: () => m.close() }), ui.btn('Terima & buat Worker', {
             kind: 'good', icon: 'check', onClick: () => {
@@ -373,14 +372,14 @@
       // ----- layout -----
       const left = h('div', { class: 'stack' });
       left.appendChild(ui.card({ title: 'Data pendaftar', icon: 'user', actions: isNew && can ? [ui.btn('Koreksi data', { sm: true, icon: 'edit', onClick: openCorrect })] : null, body: ui.kv([
-        ['Nama', reg.name], ['NIK', ui.masked(digits(reg.nik), 'nik', reg.id)], ['Tanggal lahir', reg.dob ? `${fmt.date(reg.dob)} (${fmt.age(reg.dob)} th)` : '—'], ['Jenis kelamin', genderLabel(reg.gender)],
-        ['Telepon', ui.masked(reg.phone, 'phone', reg.id)], ['Kota / provinsi', [stripProv(reg.city), reg.province].filter(Boolean).join(', ') || '—'], ['Pendidikan', reg.education], ['Status pernikahan', reg.maritalStatus || reg.marital],
+        ['Nama', reg.name], ['NIK', digits(reg.nik)], ['Tanggal lahir', reg.dob ? `${fmt.date(reg.dob)} (${fmt.age(reg.dob)} th)` : '—'], ['Jenis kelamin', genderLabel(reg.gender)],
+        ['Telepon', reg.phone], ['Kota / provinsi', [stripProv(reg.city), reg.province].filter(Boolean).join(', ') || '—'], ['Pendidikan', reg.education], ['Status pernikahan', reg.maritalStatus || reg.marital],
         ['Tujuan', regTarget(reg)], ['Pengalaman kerja', reg.experience], ['Berkas terlampir', [reg.photoName && `Foto: ${reg.photoName}`, reg.cvName && `CV: ${reg.cvName}`].filter(Boolean).join(' · ') || 'Tidak ada (dokumen diunggah saat screening)'], ['Perangkat', reg.userAgent]], 2) }));
       left.appendChild(ui.card({
         title: 'Deteksi duplikat', icon: 'copy', subtitle: 'Dibandingkan dengan seluruh worker non-arsip (NIK, paspor, nama + tanggal lahir)',
         body: !isNew ? small('Pengecekan hanya relevan untuk registrasi yang masih baru.') : ms.length ? h('div', { class: 'stack' },
           ui.callout(ms.some(m => m.hard) ? 'danger' : 'warn', ms.some(m => m.hard) ? `${ms.filter(m => m.hard).length} worker punya NIK / paspor yang sama` : 'Ada worker dengan nama dan tanggal lahir mirip', ms.some(m => m.hard) ? 'Registrasi ini tidak boleh membuat Worker baru (RUL-002). Gabungkan atau buang.' : 'Pastikan ini bukan orang yang sama sebelum menerima.'),
-          compareTable(reg, ms.slice(0, 3), 'Pengajuan ini', reg.id)) : ui.callout('good', 'Tidak ada duplikat', 'NIK, paspor, dan kombinasi nama + tanggal lahir belum ada di database worker.'),
+          compareTable(reg, ms.slice(0, 3), 'Pengajuan ini')) : ui.callout('good', 'Tidak ada duplikat', 'NIK, paspor, dan kombinasi nama + tanggal lahir belum ada di database worker.'),
       }));
 
       const right = h('div', { class: 'stack' });
@@ -424,7 +423,7 @@
       let lv;
       const archToggle = h('label', { class: 'row gap-sm sm', style: 'font-weight:600;white-space:nowrap' }, h('input', { type: 'checkbox', onChange: e => { showArchived = e.target.checked; lv.redraw(); } }), 'Tampilkan arsip');
       const exportBtn = ui.btn('Ekspor CSV', Object.assign({ icon: 'download', onClick: () => BGS.exportCsv(items(), [
-        { label: 'Worker ID', key: 'id' }, { label: 'Nama', key: 'name' }, { label: 'NIK (disamarkan)', value: w => BGS.mask.nik(w.nik) }, { label: 'Telepon (disamarkan)', value: w => BGS.mask.phone(w.phone) },
+        { label: 'Worker ID', key: 'id' }, { label: 'Nama', key: 'name' }, { label: 'NIK', key: 'nik' }, { label: 'Telepon', key: 'phone' },
         { label: 'Status', value: w => (BGS.ST.worker[w.status] || [w.status])[0] }, { label: 'Sumber', key: 'source' }, { label: 'Provinsi', key: 'province' }, { label: 'Recruiter', value: w => userName(w.recruiterId) },
         { label: 'Jumlah lamaran', value: w => appsOf(w.id).length }, { label: 'Terdaftar', value: w => fmt.date(w.createdAt) }], 'daftar-worker.csv') }, noPerm(canExport, 'Ekspor hanya untuk Superadmin, Director, dan Admin')));
       lv = ui.listView({
@@ -438,7 +437,7 @@
         ],
         columns: [
           { key: 'name', label: 'Worker', sortable: true, render: w => h('div', { class: 'row gap-sm' }, ui.avatar(w.name, w.color, 32), h('div', null, h('a', { class: 'lnk', href: '#/workers/' + w.id }, w.name), h('div', { class: 'muted sm mono' }, w.id)), w.importBatchId && ui.badge('impor', 'gray', { title: w.importBatchId })) },
-          { key: 'nik', label: 'NIK', render: w => h('span', { class: 'mono' }, BGS.mask.nik(w.nik)) },
+          { key: 'nik', label: 'NIK', render: w => h('span', { class: 'mono' }, w.nik) },
           { key: 'status', label: 'Status', sortable: true, render: w => ui.status('worker', w.status) },
           { key: 'apps', label: 'Lamaran', sortable: true, sortValue: w => appsOf(w.id).length, render: w => { const a = appsOf(w.id); return a.length ? h('div', { class: 'row gap-sm wrap' }, h('b', null, a.length), a.slice(0, 2).map(x => h('span', { class: 'badge b-gray', title: `${x.id} · ${appStatusLabel(x.status)}` }, `${x.country}·${x.profession}`)), a.length > 2 ? small('+' + (a.length - 2)) : null) : small('Belum ada'); } },
           { key: 'recruiter', label: 'Recruiter', render: w => userName(w.recruiterId) },
@@ -452,7 +451,7 @@
       });
       put(ctx.el,
         ui.pageHeader({
-          title: 'Worker', mvp: 1, subtitle: 'Satu orang = satu Worker ID permanen. NIK dan paspor disamarkan; buka profil untuk melihat detail dengan alasan tercatat.', breadcrumbs: [{ label: 'Worker & Rekrutmen' }, { label: 'Worker' }],
+          title: 'Worker', mvp: 1, subtitle: 'Satu orang = satu Worker ID permanen. Buka profil untuk melihat detail lengkap.', breadcrumbs: [{ label: 'Worker & Rekrutmen' }, { label: 'Worker' }],
           actions: [exportBtn, canWrite ? h('a', { class: 'btn', href: '#/import' }, BGS.icon('upload', 16), 'Impor Excel') : null, h('a', Object.assign({ class: 'btn btn-primary', href: canWrite ? '#/workers/new' : undefined }, canWrite ? {} : { title: 'Hanya Admin / Superadmin yang bisa menambah worker', style: 'opacity:.45;cursor:not-allowed', onClick: e => e.preventDefault() }), BGS.icon('user-plus', 16), 'Tambah worker')],
         }),
         BGS.scope.isLimited() && ui.callout('info', 'Tampilan PIC', 'Anda hanya melihat worker yang punya lamaran atau case yang ditugaskan kepada Anda (RUL-020).'),
@@ -509,7 +508,7 @@
         const rec = record();
         dupHost.appendChild(h('div', { class: blocked ? 'wk-dupbox' : 'wk-dupbox', style: blocked ? '' : 'border-color:#FCD34D;background:#FFFBEB' },
           ui.callout(blocked ? 'danger' : 'warn', blocked ? 'NIK / paspor sudah terdaftar — tidak bisa disimpan (RUL-002)' : 'Ada worker dengan nama + tanggal lahir mirip', blocked ? 'Satu orang hanya boleh punya satu Worker ID. Buka profil yang ada, atau gabungkan data ini ke worker tersebut.' : 'Periksa dulu apakah ini orang yang sama.'),
-          compareTable(rec, ms.slice(0, 3), 'Data yang diinput', 'input-baru'),
+          compareTable(rec, ms.slice(0, 3), 'Data yang diinput'),
           h('div', { class: 'row wrap gap-sm' }, ms.slice(0, 2).map(m => h('a', { class: 'btn', href: '#/workers/' + m.worker.id }, BGS.icon('user', 16), 'Buka profil ' + m.worker.id)),
             ui.btn('Gabung ke worker yang sudah ada', { kind: 'primary', icon: 'merge', onClick: () => mergeDialog({ rec: Object.assign(record(), { route: rec.route || defaultRoute(rec.country) }), matches: ms, ref: 'input manual', leftLabel: 'Data yang diinput', onMerged: (w, res) => { ui.toast(`Data digabung ke ${w.name} (${w.id})`); if (res.appNote) ui.toast(res.appNote, 'warn'); ctx.go('/workers/' + w.id); } }) }))));
       };
@@ -586,7 +585,7 @@
     const draw = () => {
       BGS.clear(host); pf = null; const o = D.worker(sel.value); if (!o) { host.appendChild(small('Pilih worker lain untuk melihat perbandingan.')); return; }
       pf = mergePreflight(w, o);
-      host.appendChild(compareTable(o, [{ worker: w }].map(x => ({ worker: x.worker, reasons: [] })), `${o.name} (${o.id})`, o.id));
+      host.appendChild(compareTable(o, [{ worker: w }].map(x => ({ worker: x.worker, reasons: [] })), `${o.name} (${o.id})`));
       host.appendChild(ui.callout(pf.error ? 'danger' : 'info', pf.error ? 'Tidak bisa digabung' : `Worker ID ${pf.keeper.id} dipertahankan (paling tua)`, pf.error || `${pf.loser.id} menjadi alias read-only. Dipindahkan: ${pf.apps.length} lamaran, ${pf.cases.length} case, ${pf.docs.length} dokumen (RUL-001).`));
       if (pf.cancel.length) host.appendChild(ui.callout('warn', 'Lamaran ganda dibatalkan otomatis (RUL-008)', pf.cancel.map(a => `${a.id} (${D.cn(a.country)} · ${D.pn(a.profession)})`).join(', ')));
       go.disabled = !!pf.error;
@@ -607,9 +606,9 @@
     if (w.status === 'ACTIVE') return 'Ada lamaran aktif dan belum ada case aktif.';
     return 'Tidak ada lamaran aktif maupun case aktif.';
   };
-  const docPreview = (d, restricted) => {
+  const docPreview = d => {
     const dt = D.docType(d.typeId) || { name: d.typeId };
-    const m = ui.modal({ title: dt.name, size: 'md', body: h('div', { class: 'stack' }, h('div', { class: 'wk-drop' }, BGS.icon('file-text', 40), h('b', null, d.filename), small(`${d.sizeKb} KB · versi ${d.version} · diunggah ${fmt.dateTime(d.uploadedAt)}`)), ui.callout('info', 'Pratinjau disimulasikan', restricted ? 'Akses dokumen RESTRICTED sudah tercatat di audit trail beserta alasannya (RUL-021).' : 'Prototipe tidak menyimpan berkas sungguhan.')), footer: [ui.btn('Tutup', { onClick: () => m.close() })] });
+    const m = ui.modal({ title: dt.name, size: 'md', body: h('div', { class: 'stack' }, h('div', { class: 'wk-drop' }, BGS.icon('file-text', 40), h('b', null, d.filename), small(`${d.sizeKb} KB · versi ${d.version} · diunggah ${fmt.dateTime(d.uploadedAt)}`)), ui.callout('info', 'Pratinjau disimulasikan', 'Prototipe tidak menyimpan berkas sungguhan.')), footer: [ui.btn('Tutup', { onClick: () => m.close() })] });
   };
 
   function openAddApplication(w, ctx) {
@@ -642,8 +641,8 @@
       { name: 'address', label: 'Alamat', value: w.address, span: 2 }, { name: 'city', label: 'Kota / kabupaten', value: w.city }, { name: 'province', label: 'Provinsi', type: 'select', options: [...new Set([...PROVINCES, w.province].filter(Boolean))], value: w.province },
       { name: 'education', label: 'Pendidikan', type: 'select', options: EDU, value: w.education }, { name: 'maritalStatus', label: 'Status pernikahan', type: 'select', options: MARITAL, value: w.maritalStatus },
       { name: 'recruiter', label: 'Recruiter', type: 'select', options: staffAdmins().map(u => [u.id, u.name]), value: w.recruiterId, span: 2 },
-      { name: 'nik', label: 'NIK baru (kosongkan bila tidak diubah)', placeholder: `Saat ini ${BGS.mask.nik(w.nik)}`, validate: v => (/^\d{16}$/.test(v) ? null : 'NIK harus 16 digit angka') },
-      { name: 'passport', label: 'Paspor baru (kosongkan bila tidak diubah)', placeholder: w.passport ? `Saat ini ${BGS.mask.passport(w.passport)}` : 'Belum ada', validate: v => (/^[A-Za-z]\d{7}$/.test(v) ? null : 'Format: 1 huruf + 7 angka') },
+      { name: 'nik', label: 'NIK baru (kosongkan bila tidak diubah)', placeholder: `Saat ini ${w.nik}`, validate: v => (/^\d{16}$/.test(v) ? null : 'NIK harus 16 digit angka') },
+      { name: 'passport', label: 'Paspor baru (kosongkan bila tidak diubah)', placeholder: w.passport ? `Saat ini ${w.passport}` : 'Belum ada', validate: v => (/^[A-Za-z]\d{7}$/.test(v) ? null : 'Format: 1 huruf + 7 angka') },
       { name: 'reason', label: 'Alasan mengubah NIK / paspor', span: 2, placeholder: 'Wajib bila NIK atau paspor diubah (identitas)', hint: 'Perubahan identitas tercatat di audit (RUL-002).' },
     ]);
     const dupHost = h('div');
@@ -711,7 +710,7 @@
         cases.filter(c => ACTIVE_CASE.includes(c.status)).forEach(c => Object.entries(c.pics).forEach(([role, u]) => picRows.push([`${role} (${c.id})`, ui.userChip(u)])));
         const con = w.consent;
         return h('div', { class: 'grid cols-2' },
-          ui.card({ title: 'Identitas', icon: 'user', body: ui.kv([['Nama lengkap', w.name], ['Jenis kelamin', genderLabel(w.gender)], ['Tanggal lahir', `${fmt.date(w.dob)} (${fmt.age(w.dob)} th)`], ['NIK', ui.masked(w.nik, 'nik', w.id)], ['Nomor paspor', w.passport ? ui.masked(w.passport, 'passport', w.id) : 'Belum ada'], ['Telepon', ui.masked(w.phone, 'phone', w.id)], ['Alamat', w.address], ['Kota / provinsi', loc(w)], ['Pendidikan', w.education], ['Status pernikahan', w.maritalStatus]]) }),
+          ui.card({ title: 'Identitas', icon: 'user', body: ui.kv([['Nama lengkap', w.name], ['Jenis kelamin', genderLabel(w.gender)], ['Tanggal lahir', `${fmt.date(w.dob)} (${fmt.age(w.dob)} th)`], ['NIK', w.nik], ['Nomor paspor', w.passport || 'Belum ada'], ['Telepon', w.phone], ['Alamat', w.address], ['Kota / provinsi', loc(w)], ['Pendidikan', w.education], ['Status pernikahan', w.maritalStatus]]) }),
           h('div', { class: 'stack' },
             ui.card({ title: 'Status & penanggung jawab', icon: 'activity', body: h('div', { class: 'stack' }, h('div', { class: 'row' }, ui.status('worker', w.status), small('Status dihitung otomatis dari lamaran & case (RUL-027)')), h('div', { class: 'muted sm' }, statusReason(w, allCases, apps)),
               ui.kv([['Sumber pendaftaran', w.source + (w.referrer ? ` (perujuk: ${w.referrer})` : '')], ['Recruiter', ui.userChip(w.recruiterId)], ['Terdaftar', fmt.dateTime(w.createdAt)], w.importBatchId && ['Batch impor', h('a', { href: '#/workers?batch=' + w.importBatchId }, w.importBatchId)]]),
@@ -729,21 +728,16 @@
           { key: 'prog', label: 'Progres langkah', render: c => { const done = c.steps.filter(s => ['COMPLETED', 'SKIPPED'].includes(s.status)).length; return h('div', { class: 'row gap-sm', style: 'min-width:150px' }, ui.progress(Math.round((done / Math.max(1, c.steps.length)) * 100), 'green'), small(`${done}/${c.steps.length}`)); } },
           { key: 'dep', label: 'Rencana berangkat', render: c => fmt.date(c.plannedDeparture) }, { key: 'owner', label: 'Case Owner', render: c => userName(c.ownerId) }] }) });
       const tabDocs = () => {
-        const canR = BGS.can('document.restricted.view');
-        const restricted = d => (D.docType(d.typeId) || {}).sensitivity === 'RESTRICTED';
-        const openR = async d => { const r = await ui.reasonPrompt({ title: 'Buka dokumen RESTRICTED', message: `${(D.docType(d.typeId) || {}).name} · ${w.name}. Akses ini tercatat di audit trail (RUL-021).`, label: 'Alasan membuka dokumen', presets: ['Verifikasi dokumen', 'Pengisian formulir resmi', 'Permintaan instansi (terdokumentasi)'] }); if (!r) return; BGS.audit('Akses dokumen RESTRICTED', 'Document', d.id, `Worker ${w.id}. Alasan: ${r}`); docPreview(d, true); };
-        const lock = d => restricted(d) && !canR;
         return h('div', { class: 'stack' },
-          !canR && ui.callout('warn', 'Sebagian dokumen terkunci', 'Dokumen RESTRICTED (KTP, KK, paspor, MCU, psikologi) tidak dapat dibuka oleh peran Anda (BR-009, RUL-020).'),
-          h('div', { class: 'row between wrap' }, small('Dokumen RESTRICTED hanya dibuka dengan alasan dan tercatat di audit.'), h('a', { class: 'btn', href: '#/documents?owner=' + w.id }, BGS.icon('folder', 16), 'Kelola dokumen')),
-          ui.card({ flush: true, body: ui.table({ rows: docs, pageSize: 10, rowClass: d => (lock(d) ? 'wk-lock' : ''), empty: ui.emptyState({ icon: 'folder', title: 'Belum ada dokumen', text: 'Dokumen diunggah saat screening.' }),
+          h('div', { class: 'row between wrap' }, small('Dokumen worker dan case terkait.'), h('a', { class: 'btn', href: '#/documents?owner=' + w.id }, BGS.icon('folder', 16), 'Kelola dokumen')),
+          ui.card({ flush: true, body: ui.table({ rows: docs, pageSize: 10, empty: ui.emptyState({ icon: 'folder', title: 'Belum ada dokumen', text: 'Dokumen diunggah saat screening.' }),
             columns: [
-              { key: 'type', label: 'Jenis', render: d => (lock(d) ? h('span', { class: 'row gap-sm' }, BGS.icon('lock', 14), (D.docType(d.typeId) || {}).name) : (D.docType(d.typeId) || {}).name) },
-              { key: 'file', label: 'Berkas', render: d => (lock(d) ? small('Terkunci — RESTRICTED') : restricted(d) ? h('span', { class: 'mono' }, '••••••••.' + d.filename.split('.').pop()) : h('span', { class: 'mono' }, d.filename)) },
+              { key: 'type', label: 'Jenis', render: d => (D.docType(d.typeId) || {}).name },
+              { key: 'file', label: 'Berkas', render: d => h('span', { class: 'mono' }, d.filename) },
               { key: 'owner', label: 'Milik', render: d => (d.ownerType === 'case' ? ui.caseLink(d.ownerId) : 'Worker') }, { key: 'v', label: 'Versi', render: d => 'v' + d.version },
-              { key: 'status', label: 'Status', render: d => (lock(d) ? '—' : ui.status('document', d.status)) }, { key: 'sens', label: 'Kerahasiaan', render: d => ui.status('sensitivity', (D.docType(d.typeId) || {}).sensitivity) },
-              { key: 'exp', label: 'Berlaku s.d.', render: d => (lock(d) ? '—' : d.expiresAt ? fmt.date(d.expiresAt) : '—') },
-              { key: 'act', label: '', render: d => (lock(d) ? null : ui.btn(restricted(d) ? 'Buka (alasan)' : 'Lihat', { sm: true, icon: restricted(d) ? 'lock' : 'eye', onClick: () => (restricted(d) ? openR(d) : docPreview(d, false)) })) }] }) }));
+              { key: 'status', label: 'Status', render: d => ui.status('document', d.status) },
+              { key: 'exp', label: 'Berlaku s.d.', render: d => (d.expiresAt ? fmt.date(d.expiresAt) : '—') },
+              { key: 'act', label: '', render: d => ui.btn('Lihat', { sm: true, icon: 'eye', onClick: () => docPreview(d) }) }] }) }));
       };
       const tabTasks = () => ui.card({ flush: true, body: ui.table({ rows: tasks, pageSize: 10, onRowClick: t => (BGS.taskDrawer ? BGS.taskDrawer(t.id, { onChange: ctx.refresh }) : ctx.go('/cases/' + t.caseId)),
         empty: ui.emptyState({ icon: 'check-square', title: 'Tidak ada tugas', text: BGS.scope.isLimited() ? 'Tidak ada tugas yang ditugaskan kepada Anda untuk worker ini.' : 'Tugas muncul setelah Placement Case diaktifkan.' }),
@@ -756,7 +750,7 @@
         D.registrations.filter(r => r.resultWorkerId === w.id).forEach(r => ev.push({ at: r.reviewedAt || r.submittedAt, by: r.reviewedBy, tone: 'blue', text: `Registrasi ${r.id} ${BGS.ST.registration[r.status][0].toLowerCase()}` }));
         apps.forEach(a => a.history.forEach(x => ev.push({ at: x.at, by: x.by, tone: /tolak|batal/i.test(x.text) ? 'red' : 'blue', text: `[${a.id}] ${x.text}` })));
         cases.forEach(c => ev.push({ at: c.createdAt, by: c.ownerId, tone: 'amber', text: `Placement Case ${c.id} dibuat (${D.cn(c.country)} · ${D.pn(c.profession)})` }));
-        D.audit.filter(a => ids.has(a.entityId)).forEach(a => ev.push({ at: a.at, by: a.userId, tone: /reveal|RESTRICTED/i.test(a.action) ? 'amber' : /arsip|digabung|alias|dibuang/i.test(a.action) ? 'red' : 'green', text: `${a.action}${a.detail ? ' — ' + a.detail : ''}` }));
+        D.audit.filter(a => ids.has(a.entityId)).forEach(a => ev.push({ at: a.at, by: a.userId, tone: /arsip|digabung|alias|dibuang/i.test(a.action) ? 'red' : 'green', text: `${a.action}${a.detail ? ' — ' + a.detail : ''}` }));
         ev.sort((a, b) => new Date(b.at) - new Date(a.at));
         return h('div', { class: 'stack' }, small('Gabungan riwayat lamaran, proses, dan jejak audit untuk worker ini.'), ev.length ? ui.card({ body: ui.timeline(ev.slice(0, 80)) }) : ui.emptyState({ title: 'Belum ada riwayat' }));
       };
@@ -808,7 +802,6 @@
   const normGender = s => (/^(l|lk|laki|laki-laki|lakilaki|pria|m|male)$/i.test(s) ? 'L' : /^(p|pr|perempuan|wanita|f|female)$/i.test(s) ? 'P' : s ? null : '');
   const normEdu = s => { const n = alnum(s); if (!n) return ''; if (/^sd/.test(n)) return 'SD'; if (/^smp|^mts/.test(n)) return 'SMP'; if (/^sma|^smk|^slta|^ma$/.test(n)) return 'SMA/SMK'; if (/^d3|^diploma/.test(n)) return 'D3'; if (/^s1|^sarjana/.test(n)) return 'S1'; return titleCase(s); };
   const normMarital = s => { const n = alnum(s); if (!n) return ''; if (/belum|lajang|single|tk/.test(n)) return 'Belum menikah'; if (/cerai|janda|duda/.test(n)) return 'Cerai'; if (/nikah|kawin|married/.test(n)) return 'Menikah'; return titleCase(s); };
-  const maskAny = s => { const d = digits(s); return d.length === 16 ? BGS.mask.nik(d) : d ? `${d.slice(0, 4)}•••• (${d.length} digit)` : '—'; };
 
   const IMP = { step: 0, fileName: '', fromSample: false, headers: [], rows: [], mapping: {}, recruiter: null, consentMode: 'pending', result: null, batchId: null, sample: 0, note: '' };
   const resetImp = () => Object.assign(IMP, { step: 0, fileName: '', fromSample: false, headers: [], rows: [], mapping: {}, result: null, batchId: null, note: '' });
@@ -946,7 +939,7 @@
       const host = h('div', { class: 'stack' }); const draw = () => { BGS.clear(host); host.append(ui.stepper(['Unggah', 'Pemetaan kolom', 'Dry-run hasil', 'Impor', 'Riwayat batch'], IMP.step), body()); window.scrollTo(0, 0); };
       const go = n => { IMP.step = n; draw(); };
 
-      const tips = () => ui.card({ title: 'Tips pembersihan data', icon: 'sparkle', subtitle: 'Cutover dari Excel / Google Sheets (BRD §16.5)', body: h('ol', { class: 'wk-tips' },
+      const tips = () => ui.card({ title: 'Tips pembersihan data', icon: 'info', subtitle: 'Cutover dari Excel / Google Sheets (BRD §16.5)', body: h('ol', { class: 'wk-tips' },
         h('li', null, h('b', null, 'Inventarisasi: '), 'daftar semua spreadsheet, kolom, dan pemiliknya sebelum mulai.'),
         h('li', null, h('b', null, 'Bersihkan dulu: '), 'NIK 16 digit tanpa spasi/titik (format kolom sebagai Teks), tanggal dd/mm/yyyy, nama tanpa angka, negara & profesi sesuai Data Master.'),
         h('li', null, h('b', null, 'Selesaikan duplikat '), 'di Excel — NIK ganda diblok sistem (RUL-002).'),
@@ -962,7 +955,7 @@
         const fileIn = h('input', { type: 'file', accept: '.xlsx,.xls,.csv', style: 'display:none', onChange: e => e.target.files[0] && onFile(e.target.files[0]) });
         const dz = h('div', { class: 'wk-drop', onDragover: e => { e.preventDefault(); dz.classList.add('on'); }, onDragleave: () => dz.classList.remove('on'), onDrop: e => { e.preventDefault(); dz.classList.remove('on'); e.dataTransfer.files[0] && onFile(e.dataTransfer.files[0]); } },
           BGS.icon('upload', 40), h('b', null, 'Tarik file ke sini, atau pilih file'), small('Excel (.xlsx, .xls) atau CSV · baris pertama harus berisi judul kolom'),
-          h('div', { class: 'row wrap gap-sm', style: 'justify-content:center' }, ui.btn('Pilih file…', { kind: 'primary', icon: 'folder', onClick: () => fileIn.click() }), ui.btn('Pakai contoh file', { icon: 'sparkle', onClick: () => { const s = makeSample(); loadParsed(s.headers, s.rows, `data-worker-lama-${IMP.sample}.xlsx`, true, 'File contoh dibuat otomatis (30 baris, sebagian sengaja bermasalah).'); draw(); ui.toast('Contoh file dimuat: 30 baris'); } }), ui.btn('Unduh template CSV', { icon: 'download', onClick: () => BGS.download('template-impor-worker.csv', [SAMPLE_HEADERS.join(','), '1,SITI AMINAH,3201010101950001,01/01/1995,P,081234567890,"Dsn. Sukamaju RT 01/02",Indramayu,Jawa Barat,SMA,Belum menikah,Arab Saudi,Domestic Worker,'].join('\n')) })),
+          h('div', { class: 'row wrap gap-sm', style: 'justify-content:center' }, ui.btn('Pilih file…', { kind: 'primary', icon: 'folder', onClick: () => fileIn.click() }), ui.btn('Pakai contoh file', { icon: 'file', onClick: () => { const s = makeSample(); loadParsed(s.headers, s.rows, `data-worker-lama-${IMP.sample}.xlsx`, true, 'File contoh dibuat otomatis (30 baris, sebagian sengaja bermasalah).'); draw(); ui.toast('Contoh file dimuat: 30 baris'); } }), ui.btn('Unduh template CSV', { icon: 'download', onClick: () => BGS.download('template-impor-worker.csv', [SAMPLE_HEADERS.join(','), '1,SITI AMINAH,3201010101950001,01/01/1995,P,081234567890,"Dsn. Sukamaju RT 01/02",Indramayu,Jawa Barat,SMA,Belum menikah,Arab Saudi,Domestic Worker,'].join('\n')) })),
           fileIn);
         async function onFile(f) {
           if (/\.csv$/i.test(f.name) || f.type === 'text/csv') {
@@ -974,7 +967,7 @@
           IMP.note && ui.callout('info', null, IMP.note),
           ui.kv([['Nama file', IMP.fileName], ['Jumlah baris data', IMP.rows.length], ['Jumlah kolom', IMP.headers.length]], 3),
           h('div', { class: 'wk-sec' }, 'Pratinjau 5 baris pertama'),
-          h('div', { class: 'tbl-scroll' }, h('table', { class: 'tbl dense' }, h('thead', null, h('tr', null, IMP.headers.map(x => h('th', null, x)))), h('tbody', null, IMP.rows.slice(0, 5).map(r => h('tr', null, IMP.headers.map((_, i) => h('td', null, /nik/i.test(IMP.headers[i]) ? maskAny(r[i]) : r[i] || ''))))))),
+          h('div', { class: 'tbl-scroll' }, h('table', { class: 'tbl dense' }, h('thead', null, h('tr', null, IMP.headers.map(x => h('th', null, x)))), h('tbody', null, IMP.rows.slice(0, 5).map(r => h('tr', null, IMP.headers.map((_, i) => h('td', null, r[i] || ''))))))),
           h('div', { class: 'form-actions' }, ui.btn('Ganti file', { onClick: () => { resetImp(); draw(); } }), ui.btn('Lanjut: pemetaan kolom', { kind: 'primary', icon: 'arrow-right', onClick: () => go(1) }))) }) : null;
         return withTips(h('div', { class: 'stack' }, ui.card({ title: '1. Unggah file', icon: 'upload', body: h('div', { class: 'stack' }, ui.callout('info', 'Impor tidak langsung mengubah data', 'Anda akan melihat hasil uji (dry-run) dan laporan error dulu. Data baru dibuat setelah Anda mengonfirmasi, sebagai satu batch yang bisa di-rollback (FR-WRK-017).'), dz) }), loaded));
       };
@@ -983,7 +976,7 @@
       const stepMap = () => {
         const used = {}; Object.values(IMP.mapping).forEach(f => { if (f) used[f] = (used[f] || 0) + 1; });
         const missing = IMP_FIELDS.filter(f => f.required && !used[f.key]); const dupMap = Object.keys(used).filter(k => used[k] > 1);
-        const sampleOf = i => IMP.rows.map(r => r[i]).filter(x => String(x || '').trim()).slice(0, 2).map(x => (/nik/i.test(IMP.headers[i]) || IMP.mapping[i] === 'nik' ? maskAny(x) : x)).join(' · ') || '—';
+        const sampleOf = i => IMP.rows.map(r => r[i]).filter(x => String(x || '').trim()).slice(0, 2).join(' · ') || '—';
         const rowsEl = IMP.headers.map((hd, i) => { const f = IMP.mapping[i]; const isDup = f && used[f] > 1;
           return h('tr', null, h('td', null, h('b', null, hd)), h('td', { class: 'muted sm' }, sampleOf(i)), h('td', null, BGS.icon('arrow-right', 14)),
             h('td', null, h('select', { class: 'input wk-map-sel' + (isDup ? ' invalid' : ''), onChange: e => { IMP.mapping[i] = e.target.value; draw(); } }, h('option', { value: '' }, '— Abaikan kolom ini —'), IMP_FIELDS.map(x => h('option', { value: x.key, selected: f === x.key }, x.label + (x.required ? ' *' : ''))))),
@@ -999,23 +992,23 @@
               field('Recruiter untuk data impor', h('select', { class: 'input', onChange: e => { IMP.recruiter = e.target.value; } }, staffAdmins().map(u => h('option', { value: u.id, selected: u.id === IMP.recruiter }, u.name)))),
               field('Bukti consent data lama', h('select', { class: 'input', onChange: e => { IMP.consentMode = e.target.value; } }, [['pending', 'Belum ada — tandai "perlu dilengkapi"'], ['archive', 'Ada, formulir fisik tersimpan di arsip']].map(([v, l]) => h('option', { value: v, selected: IMP.consentMode === v }, l))), h('span', { class: 'hint' }, 'RUL-029: consent harus tercatat. Impor memakai versi ' + curConsent() + '.'))),
             h('div', { class: 'wk-sec' }, 'Pratinjau hasil pemetaan (3 baris pertama)'),
-            usedFields.length ? h('div', { class: 'tbl-scroll' }, h('table', { class: 'tbl dense' }, h('thead', null, h('tr', null, usedFields.map(f => h('th', null, f.label)))), h('tbody', null, prev.map(r => h('tr', null, usedFields.map(f => h('td', null, f.key === 'nik' ? maskAny(r[colOf.nik]) : r[colOf[f.key]] || ''))))))) : small('Belum ada kolom yang dipetakan.'),
+            usedFields.length ? h('div', { class: 'tbl-scroll' }, h('table', { class: 'tbl dense' }, h('thead', null, h('tr', null, usedFields.map(f => h('th', null, f.label)))), h('tbody', null, prev.map(r => h('tr', null, usedFields.map(f => h('td', null, r[colOf[f.key]] || ''))))))) : small('Belum ada kolom yang dipetakan.'),
             h('div', { class: 'form-actions' }, ui.btn('Kembali', { onClick: () => go(0) }), ui.btn('Jalankan dry-run', Object.assign({ kind: 'primary', icon: 'play', onClick: () => { IMP.result = dryRun(); go(2); } }, noPerm(!missing.length && !dupMap.length, 'Lengkapi pemetaan kolom wajib dulu')))) ) })));
       };
 
       // ---------- step 2: dry-run ----------
       const stepDry = () => {
         const R = IMP.result || []; const val = R.filter(r => r.status === 'VALID'), err = R.filter(r => r.status === 'ERROR'), dup = R.filter(r => r.status === 'DUPLICATE'), bad = R.filter(r => r.status !== 'VALID');
-        const exportErr = () => { const rows = []; bad.forEach(r => r.issues.forEach(x => rows.push({ baris: r.rowNo, jenis: r.status === 'ERROR' ? 'Error' : 'Duplikat', kolom: x.field, pesan: x.msg, nama: r.label, nik: maskAny(r.nikRaw) }))); BGS.exportCsv(rows, [{ label: 'Baris di file', key: 'baris' }, { label: 'Jenis', key: 'jenis' }, { label: 'Kolom', key: 'kolom' }, { label: 'Pesan', key: 'pesan' }, { label: 'Nama', key: 'nama' }, { label: 'NIK (disamarkan)', key: 'nik' }], `laporan-error-${IMP.fileName.replace(/\.[^.]+$/, '')}.csv`); };
+        const exportErr = () => { const rows = []; bad.forEach(r => r.issues.forEach(x => rows.push({ baris: r.rowNo, jenis: r.status === 'ERROR' ? 'Error' : 'Duplikat', kolom: x.field, pesan: x.msg, nama: r.label, nik: digits(r.nikRaw) }))); BGS.exportCsv(rows, [{ label: 'Baris di file', key: 'baris' }, { label: 'Jenis', key: 'jenis' }, { label: 'Kolom', key: 'kolom' }, { label: 'Pesan', key: 'pesan' }, { label: 'Nama', key: 'nama' }, { label: 'NIK', key: 'nik' }], `laporan-error-${IMP.fileName.replace(/\.[^.]+$/, '')}.csv`); };
         const doImport = async () => {
           const ok = await ui.confirm({ title: 'Mulai impor', message: `Akan membuat ${val.length} Worker (+ lamaran untuk yang punya tujuan) sebagai satu batch. ${bad.length} baris bermasalah dilewati. Batch bisa di-rollback selama data belum diproses lanjut.`, confirmLabel: `Impor ${val.length} worker`, tone: 'primary' });
           if (!ok) return; try { const b = runImport(R); IMP.batchId = b.id; ui.toast(`Batch ${b.id}: ${b.imported} worker dibuat`); go(3); } catch (e) { ui.toast(e.message, 'danger'); }
         };
         const issueCell = r => h('ul', { style: 'margin:0;padding-left:16px' }, r.issues.map(x => h('li', null, ui.badge(x.field, x.kind === 'dup' ? 'amber' : 'red'), ' ', x.msg)));
         const badTable = () => ui.table({ rows: bad, pageSize: 8, rowClass: r => (r.status === 'ERROR' ? 'wk-rowerr' : 'wk-rowdup'), empty: ui.emptyState({ icon: 'check-circle', title: 'Tidak ada baris bermasalah', text: 'Semua baris lolos pemeriksaan.' }),
-          columns: [{ key: 'rowNo', label: 'Baris', sortable: true, render: r => h('b', null, '#' + r.rowNo) }, { key: 'label', label: 'Nama', render: r => r.label }, { key: 'nik', label: 'NIK', render: r => h('span', { class: 'mono' }, maskAny(r.nikRaw)) }, { key: 'status', label: 'Jenis', render: r => ui.badge(r.status === 'ERROR' ? 'Error' : 'Duplikat', r.status === 'ERROR' ? 'red' : 'amber', { dot: true }) }, { key: 'issues', label: 'Masalah', render: issueCell }] });
+          columns: [{ key: 'rowNo', label: 'Baris', sortable: true, render: r => h('b', null, '#' + r.rowNo) }, { key: 'label', label: 'Nama', render: r => r.label }, { key: 'nik', label: 'NIK', render: r => h('span', { class: 'mono' }, digits(r.nikRaw) || '—') }, { key: 'status', label: 'Jenis', render: r => ui.badge(r.status === 'ERROR' ? 'Error' : 'Duplikat', r.status === 'ERROR' ? 'red' : 'amber', { dot: true }) }, { key: 'issues', label: 'Masalah', render: issueCell }] });
         const okTable = () => ui.table({ rows: val, pageSize: 8, empty: ui.emptyState({ icon: 'alert', title: 'Tidak ada baris yang siap diimpor', text: 'Perbaiki file lalu unggah ulang.' }),
-          columns: [{ key: 'rowNo', label: 'Baris', render: r => '#' + r.rowNo }, { key: 'label', label: 'Nama', render: r => r.data.name }, { key: 'nik', label: 'NIK', render: r => h('span', { class: 'mono' }, maskAny(r.data.nik)) }, { key: 'dob', label: 'Tgl lahir', render: r => fmt.date(r.data.dob) },
+          columns: [{ key: 'rowNo', label: 'Baris', render: r => '#' + r.rowNo }, { key: 'label', label: 'Nama', render: r => r.data.name }, { key: 'nik', label: 'NIK', render: r => h('span', { class: 'mono' }, digits(r.data.nik) || '—') }, { key: 'dob', label: 'Tgl lahir', render: r => fmt.date(r.data.dob) },
             { key: 'tujuan', label: 'Lamaran', render: r => (r.data.country ? `${D.cn(r.data.country)} · ${D.pn(r.data.profession)}` : small('Tanpa lamaran')) }, { key: 'warn', label: 'Catatan', render: r => (r.warns.length ? ui.badge(r.warns[0], 'amber') : '—') }] });
         return withTips(h('div', { class: 'stack' },
           ui.card({ title: '3. Hasil dry-run', icon: 'clipboard', subtitle: 'Uji coba — belum ada data yang dibuat', body: h('div', { class: 'stack' },
